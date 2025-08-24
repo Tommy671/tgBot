@@ -16,13 +16,13 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    telegram_id = Column(Integer, unique=True, index=True)
-    username = Column(String, nullable=True)
+    telegram_id = Column(Integer, index=True)  # Убираем unique=True
+    username = Column(String, unique=True, nullable=True, index=True)  # Добавляем unique=True
     full_name = Column(String, nullable=True)  # ФИО
     activity_field = Column(String, nullable=True)  # Сфера деятельности
     company = Column(String, nullable=True)  # Компания
     role_in_company = Column(String, nullable=True)  # Роль в компании
-    contact_number = Column(String, nullable=True)  # Контактный номер
+    contact_number = Column(String, unique=True, nullable=True, index=True)  # Контактный номер
     participation_purpose = Column(Text, nullable=True)  # Цель участия
     registration_date = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     last_activity = Column(DateTime, default=lambda: datetime.now(timezone.utc))

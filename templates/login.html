@@ -171,13 +171,13 @@
             }
         });
         
-        // Проверяем, есть ли уже токен
-        document.addEventListener('DOMContentLoaded', function() {
-            const token = localStorage.getItem('authToken');
-            if (token) {
-                window.location.href = '/';
-            }
-        });
+        // Убираем автоматическое перенаправление - пусть сервер сам решает
+        // document.addEventListener('DOMContentLoaded', function() {
+        //     const token = localStorage.getItem('authToken');
+        //     if (token) {
+        //         window.location.href = '/';
+        //     }
+        // });
     </script>
 </body>
 </html> 

@@ -106,8 +106,32 @@ def cache_result(ttl: int = 300, key_prefix: str = ""):
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args, **kwargs):
+            # Фильтруем аргументы, исключая несериализуемые объекты
+            def filter_args(args_tuple, kwargs_dict):
+                filtered_args = []
+                for arg in args_tuple:
+                    try:
+                        # Пытаемся сериализовать аргумент
+                        json.dumps(arg)
+                        filtered_args.append(arg)
+                    except (TypeError, ValueError):
+                        # Если не можем сериализовать, добавляем строковое представление типа
+                        filtered_args.append(f"<{type(arg).__name__}>")
+                
+                filtered_kwargs = {}
+                for key, value in kwargs_dict.items():
+                    try:
+                        json.dumps(value)
+                        filtered_kwargs[key] = value
+                    except (TypeError, ValueError):
+                        filtered_kwargs[key] = f"<{type(value).__name__}>"
+                
+                return filtered_args, filtered_kwargs
+            
+            filtered_args, filtered_kwargs = filter_args(args, kwargs)
+            
             # Создание ключа кэша
-            cache_key = f"{key_prefix}:{func.__name__}:{hashlib.md5(json.dumps((args, kwargs), sort_keys=True).encode()).hexdigest()}"
+            cache_key = f"{key_prefix}:{func.__name__}:{hashlib.md5(json.dumps((filtered_args, filtered_kwargs), sort_keys=True).encode()).hexdigest()}"
             
             # Получение из кэша
             cached_result = cache.get(cache_key)

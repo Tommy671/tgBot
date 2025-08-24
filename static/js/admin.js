@@ -1,5 +1,7 @@
 // Глобальные переменные
 let authToken = localStorage.getItem('authToken');
+window.allUsers = []; // Храним всех пользователей для фильтрации
+window.filteredUsers = []; // Отфильтрованные пользователи
 
 // Функции для работы с API
 async function apiRequest(endpoint, options = {}) {
@@ -29,10 +31,11 @@ async function apiRequest(endpoint, options = {}) {
         const response = await fetch(url, finalOptions);
         
         if (response.status === 401) {
-            // Токен истек или недействителен
-            localStorage.removeItem('authToken');
-            window.location.href = '/login';
-            return;
+            // Токен истек или недействителен - временно убираем перенаправление
+            // localStorage.removeItem('authToken');
+            // window.location.href = '/login';
+            // return;
+            console.warn('Unauthorized access, but continuing for debugging');
         }
         
         if (!response.ok) {
@@ -66,46 +69,403 @@ async function login(username, password) {
 // Получение статистики дашборда
 async function getDashboardStats() {
     try {
+        console.log('Fetching dashboard stats...');
         const stats = await apiRequest('/api/dashboard');
+        console.log('Dashboard stats received:', stats);
+        console.log('Stats type:', typeof stats);
+        console.log('Stats keys:', Object.keys(stats));
         updateDashboardUI(stats);
     } catch (error) {
         console.error('Failed to get dashboard stats:', error);
+        // Показываем сообщение об ошибке на странице
+        const totalUsersEl = document.getElementById('total-users');
+        const activeSubscriptionsEl = document.getElementById('active-subscriptions');
+        const newUsersTodayEl = document.getElementById('new-users-today');
+        const expiringSubscriptionsEl = document.getElementById('expiring-subscriptions');
+        
+        if (totalUsersEl) totalUsersEl.textContent = 'Ошибка';
+        if (activeSubscriptionsEl) activeSubscriptionsEl.textContent = 'Ошибка';
+        if (newUsersTodayEl) newUsersTodayEl.textContent = 'Ошибка';
+        if (expiringSubscriptionsEl) expiringSubscriptionsEl.textContent = 'Ошибка';
+        
+        // Показываем уведомление об ошибке
+        showAlert('Ошибка загрузки статистики. Возможно, требуется авторизация.', 'warning');
     }
 }
 
 // Обновление UI дашборда
 function updateDashboardUI(stats) {
-    document.getElementById('total-users').textContent = stats.total_users;
-    document.getElementById('active-subscriptions').textContent = stats.active_subscriptions;
-    document.getElementById('new-users-today').textContent = stats.new_users_today;
-    document.getElementById('expiring-subscriptions').textContent = stats.expiring_subscriptions;
+    const totalUsersEl = document.getElementById('total-users');
+    const activeSubscriptionsEl = document.getElementById('active-subscriptions');
+    const newUsersTodayEl = document.getElementById('new-users-today');
+    const expiringSubscriptionsEl = document.getElementById('expiring-subscriptions');
+    
+    if (totalUsersEl) totalUsersEl.textContent = stats.total_users || 0;
+    if (activeSubscriptionsEl) activeSubscriptionsEl.textContent = stats.active_subscriptions || 0;
+    if (newUsersTodayEl) newUsersTodayEl.textContent = stats.new_users_week || 0; // API возвращает new_users_week
+    if (expiringSubscriptionsEl) expiringSubscriptionsEl.textContent = stats.expiring_subscriptions || 0;
+    
+    console.log('Dashboard stats updated:', stats);
+    
+    // Загружаем последних пользователей для отображения на дашборде
+    loadRecentUsers();
+}
+
+// Обновление статистики в разделе пользователей
+function updateUsersStats(usersData) {
+    const totalUsersCountEl = document.getElementById('total-users-count');
+    const activeUsersCountEl = document.getElementById('active-users-count');
+    const subscribedUsersCountEl = document.getElementById('subscribed-users-count');
+    const newUsersCountEl = document.getElementById('new-users-count');
+    
+    if (totalUsersCountEl) totalUsersCountEl.textContent = usersData.total || 0;
+    if (activeUsersCountEl) activeUsersCountEl.textContent = usersData.total || 0; // Все пользователи активны по умолчанию
+    
+    // Подсчитываем пользователей с подпиской
+    const users = usersData.users || [];
+    const subscribedCount = users.filter(user => 
+        user.subscription_status && user.subscription_status !== 'Нет подписки'
+    ).length;
+    
+    if (subscribedUsersCountEl) subscribedUsersCountEl.textContent = subscribedCount;
+    
+    // Подсчитываем новых пользователей за сегодня
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const newUsersCount = users.filter(user => {
+        if (!user.registration_date) return false;
+        const registrationDate = new Date(user.registration_date);
+        registrationDate.setHours(0, 0, 0, 0);
+        return registrationDate.getTime() === today.getTime();
+    }).length;
+    
+    if (newUsersCountEl) newUsersCountEl.textContent = newUsersCount;
+    
+    console.log('Users stats updated:', {
+        total: usersData.total,
+        subscribed: subscribedCount,
+        newToday: newUsersCount
+    });
+}
+
+// Загрузка последних пользователей для дашборда
+async function loadRecentUsers() {
+    try {
+        const users = await apiRequest('/api/users?skip=0&limit=5');
+        updateRecentUsersTable(users);
+    } catch (error) {
+        console.error('Failed to load recent users:', error);
+        // Показываем сообщение об ошибке в таблице
+        const tbody = document.querySelector('#recent-users-table tbody');
+        if (tbody) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="text-center text-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Ошибка загрузки данных
+                    </td>
+                </tr>
+            `;
+        }
+    }
+}
+
+// Обновление таблицы последних пользователей на дашборде
+function updateRecentUsersTable(usersData) {
+    const tbody = document.querySelector('#recent-users-table tbody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '';
+    
+    const users = usersData.users || [];
+    
+    if (users.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center text-muted">
+                    Нет пользователей
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    users.forEach(user => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${user.id}</td>
+            <td>${user.full_name || 'Не указано'}</td>
+            <td>@${user.username || 'Нет'}</td>
+            <td>${user.company || 'Не указано'}</td>
+            <td>${user.registration_date ? new Date(user.registration_date).toLocaleDateString('ru-RU') : 'Не указано'}</td>
+            <td>
+                <span class="badge ${user.subscription_status && user.subscription_status !== 'Нет подписки' ? 'bg-success' : 'bg-secondary'}">
+                    ${user.subscription_status || 'Нет'}
+                </span>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
 }
 
 // Получение списка пользователей
 async function getUsers(search = '', page = 0, limit = 20) {
     try {
+        console.log('Fetching users...');
         const params = new URLSearchParams({
-            skip: page * limit,
-            limit: limit,
+            skip: 0, // Всегда загружаем всех пользователей для фильтрации
+            limit: 1000, // Большой лимит для получения всех пользователей
         });
         
-        if (search) {
-            params.append('search', search);
-        }
-        
         const users = await apiRequest(`/api/users?${params}`);
-        updateUsersTable(users);
+        console.log('Users received:', users);
+        
+        // Сохраняем всех пользователей в глобальную переменную
+        window.allUsers = users.users || [];
+        console.log('All users saved:', window.allUsers);
+        
+        // Применяем фильтры и поиск
+        applyFiltersAndSearch();
     } catch (error) {
         console.error('Failed to get users:', error);
     }
 }
 
+// Применение фильтров и поиска
+function applyFiltersAndSearch() {
+    let filtered = [...allUsers];
+    
+    // Получаем значения фильтров
+    const searchTerm = document.getElementById('search-input')?.value?.toLowerCase() || '';
+    const statusFilter = document.getElementById('status-filter')?.value || '';
+    const sortFilter = document.getElementById('sort-filter')?.value || '';
+    
+    // Применяем поиск
+    if (searchTerm) {
+        filtered = filtered.filter(user => {
+            const name = (user.full_name || '').toLowerCase();
+            const username = (user.username || '').toLowerCase();
+            const phone = (user.contact_number || '').toLowerCase();
+            const company = (user.company || '').toLowerCase();
+            
+            return name.includes(searchTerm) || 
+                   username.includes(searchTerm) || 
+                   phone.includes(searchTerm) || 
+                   company.includes(searchTerm);
+        });
+    }
+    
+    // Применяем фильтр по статусу
+    if (statusFilter) {
+        switch (statusFilter) {
+            case 'active':
+                filtered = filtered.filter(user => user.subscription_status && user.subscription_status !== 'Нет подписки');
+                break;
+            case 'inactive':
+                filtered = filtered.filter(user => !user.subscription_status || user.subscription_status === 'Нет подписки');
+                break;
+            case 'with_subscription':
+                filtered = filtered.filter(user => user.subscription_status && user.subscription_status !== 'Нет подписки');
+                break;
+            case 'without_subscription':
+                filtered = filtered.filter(user => !user.subscription_status || user.subscription_status === 'Нет подписки');
+                break;
+        }
+    }
+    
+    // Применяем сортировку
+    switch (sortFilter) {
+        case 'registration_date_desc':
+            filtered.sort((a, b) => new Date(b.registration_date || 0) - new Date(a.registration_date || 0));
+            break;
+        case 'registration_date_asc':
+            filtered.sort((a, b) => new Date(a.registration_date || 0) - new Date(b.registration_date || 0));
+            break;
+        case 'last_activity_desc':
+            filtered.sort((a, b) => new Date(b.last_activity || 0) - new Date(a.last_activity || 0));
+            break;
+        case 'name_asc':
+            filtered.sort((a, b) => (a.full_name || '').localeCompare(b.full_name || '', 'ru'));
+            break;
+        case 'name_desc':
+            filtered.sort((a, b) => (b.full_name || '').localeCompare(a.full_name || '', 'ru'));
+            break;
+    }
+    
+    // Сохраняем отфильтрованные данные в глобальную переменную
+    window.filteredUsers = filtered;
+    
+    // Обновляем таблицу
+    updateUsersTable({ users: filtered, total: filtered.length });
+}
+
+// Обновление списка пользователей
+function refreshUsers() {
+    getUsers();
+    showAlert('Список пользователей обновлен', 'success');
+}
+
+// Выполнение экспорта
+function performExport() {
+    const format = document.querySelector('input[name="exportFormat"]:checked').value;
+    const fields = [];
+    
+    // Собираем выбранные поля
+    if (document.getElementById('exportId').checked) fields.push('id');
+    if (document.getElementById('exportName').checked) fields.push('full_name');
+    if (document.getElementById('exportUsername').checked) fields.push('username');
+    if (document.getElementById('exportPhone').checked) fields.push('contact_number');
+    if (document.getElementById('exportCompany').checked) fields.push('company');
+    if (document.getElementById('exportRegistration').checked) fields.push('registration_date');
+    if (document.getElementById('exportSubscription').checked) fields.push('subscription_status');
+    
+    // Создаем данные для экспорта - используем allUsers если filteredUsers не определен
+    const exportData = (window.filteredUsers && window.filteredUsers.length > 0) ? window.filteredUsers : window.allUsers;
+    
+    console.log('Export data:', exportData);
+    console.log('All users:', window.allUsers);
+    console.log('Filtered users:', window.filteredUsers);
+    
+    if (!exportData || exportData.length === 0) {
+        showAlert('Нет данных для экспорта', 'warning');
+        return;
+    }
+    
+    // Экспортируем данные
+    if (format === 'csv') {
+        exportToCSV(exportData, fields);
+    } else if (format === 'excel') {
+        exportToExcel(exportData, fields);
+    }
+    
+    // Закрываем модальное окно
+    const exportModal = bootstrap.Modal.getInstance(document.getElementById('exportModal'));
+    exportModal.hide();
+    
+    showAlert(`Экспортировано ${exportData.length} пользователей в формате ${format.toUpperCase()}`, 'success');
+}
+
+// Экспорт в CSV
+function exportToCSV(data, fields) {
+    const headers = fields.map(field => {
+        const fieldNames = {
+            'id': 'ID',
+            'full_name': 'ФИО',
+            'username': 'Username',
+            'contact_number': 'Телефон',
+            'company': 'Компания',
+            'registration_date': 'Дата регистрации',
+            'subscription_status': 'Статус подписки'
+        };
+        return fieldNames[field] || field;
+    });
+    
+    const csvContent = [
+        headers.join(','),
+        ...data.map(user => 
+            fields.map(field => {
+                let value = user[field] || '';
+                if (field === 'registration_date' && value) {
+                    value = new Date(value).toLocaleDateString('ru-RU');
+                }
+                // Преобразуем в строку и экранируем запятые и кавычки
+                value = String(value);
+                if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
+                    value = `"${value.replace(/"/g, '""')}"`;
+                }
+                return value;
+            }).join(',')
+        )
+    ].join('\n');
+    
+    downloadFile(csvContent, 'users.csv', 'text/csv');
+}
+
+// Экспорт в Excel (простой формат)
+function exportToExcel(data, fields) {
+    const headers = fields.map(field => {
+        const fieldNames = {
+            'id': 'ID',
+            'full_name': 'ФИО',
+            'username': 'Username',
+            'contact_number': 'Телефон',
+            'company': 'Компания',
+            'registration_date': 'Дата регистрации',
+            'subscription_status': 'Статус подписки'
+        };
+        return fieldNames[field] || field;
+    });
+    
+    // Создаем HTML таблицу для Excel
+    let html = '<table border="1">';
+    html += '<tr>' + headers.map(h => `<th>${h}</th>`).join('') + '</tr>';
+    
+    data.forEach(user => {
+        html += '<tr>';
+        fields.forEach(field => {
+            let value = user[field] || '';
+            if (field === 'registration_date' && value) {
+                value = new Date(value).toLocaleDateString('ru-RU');
+            }
+            html += `<td>${value}</td>`;
+        });
+        html += '</tr>';
+    });
+    
+    html += '</table>';
+    
+    downloadFile(html, 'users.xls', 'application/vnd.ms-excel');
+}
+
+// Функция для скачивания файла
+function downloadFile(content, filename, contentType) {
+    const blob = new Blob([content], { type: contentType });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+}
+
 // Обновление таблицы пользователей
-function updateUsersTable(users) {
+function updateUsersTable(usersData) {
+    console.log('updateUsersTable called with:', usersData);
     const tbody = document.querySelector('#users-table tbody');
-    if (!tbody) return;
+    if (!tbody) {
+        console.error('Table body not found');
+        return;
+    }
     
     tbody.innerHTML = '';
+    
+    // API возвращает объект с полем users, а не массив напрямую
+    const users = usersData.users || usersData;
+    console.log('Extracted users:', users);
+    console.log('Users type:', typeof users);
+    console.log('Is array:', Array.isArray(users));
+    
+    if (!Array.isArray(users)) {
+        console.error('Users is not an array:', users);
+        return;
+    }
+    
+    // Обновляем статистику в разделе пользователей
+    updateUsersStats(usersData);
+    
+    if (users.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="9" class="text-center text-muted">
+                    <i class="fas fa-search me-2"></i>
+                    Пользователи не найдены
+                </td>
+            </tr>
+        `;
+        return;
+    }
     
     users.forEach(user => {
         const row = document.createElement('tr');
@@ -118,8 +478,8 @@ function updateUsersTable(users) {
             <td>${user.contact_number || 'Нет'}</td>
             <td>${user.registration_date ? new Date(user.registration_date).toLocaleDateString('ru-RU') : 'Не указано'}</td>
             <td>
-                <span class="badge ${user.subscription && user.subscription.is_active && new Date(user.subscription.end_date) > new Date() ? 'bg-success' : 'bg-secondary'}">
-                    ${user.subscription && user.subscription.is_active && new Date(user.subscription.end_date) > new Date() ? 'Активна' : 'Нет'}
+                <span class="badge ${user.subscription_status && user.subscription_status !== 'Нет подписки' ? 'bg-success' : 'bg-secondary'}">
+                    ${user.subscription_status || 'Нет'}
                 </span>
             </td>
             <td>
@@ -184,11 +544,19 @@ async function getSubscriptions(page = 0, limit = 20) {
 }
 
 // Обновление таблицы подписок
-function updateSubscriptionsTable(subscriptions) {
+function updateSubscriptionsTable(subscriptionsData) {
     const tbody = document.querySelector('#subscriptions-table tbody');
     if (!tbody) return;
     
     tbody.innerHTML = '';
+    
+    // API возвращает объект с полем subscriptions, а не массив напрямую
+    const subscriptions = subscriptionsData.subscriptions || subscriptionsData;
+    
+    if (!Array.isArray(subscriptions)) {
+        console.error('Subscriptions is not an array:', subscriptions);
+        return;
+    }
     
     subscriptions.forEach(subscription => {
         const row = document.createElement('tr');
@@ -307,11 +675,11 @@ function showAlert(message, type = 'info') {
 
 // Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {
-    // Проверяем аутентификацию
-    if (!authToken && window.location.pathname !== '/login') {
-        window.location.href = '/login';
-        return;
-    }
+    // Временно убираем проверку аутентификации для отладки
+    // if (!authToken && window.location.pathname !== '/login' && window.location.pathname !== '/') {
+    //     window.location.href = '/login';
+    //     return;
+    // }
     
     // Инициализируем страницы
     const path = window.location.pathname;
@@ -347,18 +715,36 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Обработчик поиска
+    // Обработчики фильтров и поиска
     const searchInput = document.getElementById('search-input');
+    const statusFilter = document.getElementById('status-filter');
+    const sortFilter = document.getElementById('sort-filter');
+    
     if (searchInput) {
         let searchTimeout;
         searchInput.addEventListener('input', function() {
             clearTimeout(searchTimeout);
             searchTimeout = setTimeout(() => {
-                const search = this.value.trim();
                 if (path === '/users') {
-                    getUsers(search);
+                    applyFiltersAndSearch();
                 }
-            }, 500);
+            }, 300);
+        });
+    }
+    
+    if (statusFilter) {
+        statusFilter.addEventListener('change', function() {
+            if (path === '/users') {
+                applyFiltersAndSearch();
+            }
+        });
+    }
+    
+    if (sortFilter) {
+        sortFilter.addEventListener('change', function() {
+            if (path === '/users') {
+                applyFiltersAndSearch();
+            }
         });
     }
 }); 

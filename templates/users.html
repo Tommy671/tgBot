@@ -27,7 +27,7 @@
                     <span class="input-group-text">
                         <i class="fas fa-search"></i>
                     </span>
-                    <input type="text" class="form-control" id="search-input" placeholder="Поиск по имени, username, email...">
+                    <input type="text" class="form-control" id="search-input" placeholder="Поиск по имени, username, телефону, компании...">
                 </div>
             </div>
             <div class="col-md-3">
@@ -205,10 +205,10 @@
                         <input class="form-check-input" type="checkbox" id="exportPhone" checked>
                         <label class="form-check-label" for="exportPhone">Телефон</label>
                     </div>
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="exportEmail" checked>
-                        <label class="form-check-label" for="exportEmail">Email</label>
-                    </div>
+                                         <div class="form-check">
+                         <input class="form-check-input" type="checkbox" id="exportCompany" checked>
+                         <label class="form-check-label" for="exportCompany">Компания</label>
+                     </div>
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="exportRegistration" checked>
                         <label class="form-check-label" for="exportRegistration">Дата регистрации</label>
@@ -258,19 +258,137 @@
         
         // Собираем выбранные поля
         if (document.getElementById('exportId').checked) fields.push('id');
-        if (document.getElementById('exportName').checked) fields.push('name');
+        if (document.getElementById('exportName').checked) fields.push('full_name');
         if (document.getElementById('exportUsername').checked) fields.push('username');
-        if (document.getElementById('exportPhone').checked) fields.push('phone');
-        if (document.getElementById('exportEmail').checked) fields.push('email');
-        if (document.getElementById('exportRegistration').checked) fields.push('registration');
-        if (document.getElementById('exportSubscription').checked) fields.push('subscription');
+        if (document.getElementById('exportPhone').checked) fields.push('contact_number');
+        if (document.getElementById('exportCompany').checked) fields.push('company');
+        if (document.getElementById('exportRegistration').checked) fields.push('registration_date');
+        if (document.getElementById('exportSubscription').checked) fields.push('subscription_status');
         
-        // Здесь можно добавить логику экспорта
-        showAlert(`Экспорт в формате ${format.toUpperCase()} с полями: ${fields.join(', ')}`, 'info');
+        // Создаем данные для экспорта
+        const exportData = [];
+        if (window.allUsers && window.allUsers.length > 0) {
+            window.allUsers.forEach(user => {
+                const row = {};
+                fields.forEach(field => {
+                    if (field === 'registration_date' && user[field]) {
+                        row[field] = new Date(user[field]).toLocaleDateString('ru-RU');
+                    } else {
+                        row[field] = user[field] || '';
+                    }
+                });
+                exportData.push(row);
+            });
+        }
+        
+        if (exportData.length === 0) {
+            showAlert('Нет данных для экспорта', 'warning');
+            return;
+        }
+        
+        // Создаем и скачиваем файл
+        if (format === 'csv') {
+            downloadCSV(exportData, fields);
+        } else if (format === 'excel') {
+            downloadExcel(exportData, fields);
+        }
         
         // Закрываем модальное окно
         const exportModal = bootstrap.Modal.getInstance(document.getElementById('exportModal'));
         exportModal.hide();
+        
+        showAlert(`Экспортировано ${exportData.length} пользователей в формате ${format.toUpperCase()}`, 'success');
+    }
+    
+    // Функция для скачивания CSV
+    function downloadCSV(data, fields) {
+        const headers = {
+            'id': 'ID',
+            'full_name': 'ФИО',
+            'username': 'Username',
+            'contact_number': 'Телефон',
+            'company': 'Компания',
+            'registration_date': 'Дата регистрации',
+            'subscription_status': 'Статус подписки'
+        };
+        
+        let csvContent = fields.map(field => headers[field] || field).join(',') + '\n';
+        
+        data.forEach(row => {
+            const values = fields.map(field => {
+                const value = row[field] || '';
+                // Экранируем запятые и кавычки
+                if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+                    return `"${value.replace(/"/g, '""')}"`;
+                }
+                return value;
+            });
+            csvContent += values.join(',') + '\n';
+        });
+        
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `users_export_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+    
+    // Функция для скачивания Excel (простой HTML таблицы)
+    function downloadExcel(data, fields) {
+        const headers = {
+            'id': 'ID',
+            'full_name': 'ФИО',
+            'username': 'Username',
+            'contact_number': 'Телефон',
+            'company': 'Компания',
+            'registration_date': 'Дата регистрации',
+            'subscription_status': 'Статус подписки'
+        };
+        
+        let htmlContent = `
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <title>Экспорт пользователей</title>
+        </head>
+        <body>
+            <table border="1">
+                <thead>
+                    <tr>
+                        ${fields.map(field => `<th>${headers[field] || field}</th>`).join('')}
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        
+        data.forEach(row => {
+            htmlContent += '<tr>';
+            fields.forEach(field => {
+                htmlContent += `<td>${row[field] || ''}</td>`;
+            });
+            htmlContent += '</tr>';
+        });
+        
+        htmlContent += `
+                </tbody>
+            </table>
+        </body>
+        </html>
+        `;
+        
+        const blob = new Blob([htmlContent], { type: 'application/vnd.ms-excel' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `users_export_${new Date().toISOString().split('T')[0]}.xls`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
     
     // Обработчики фильтров
@@ -302,7 +420,27 @@
             currentSortFilter = this.value;
             currentPage = 0;
             getUsers(currentSearch, currentPage);
-        });
-    });
-</script>
+                 });
+     });
+     
+     // Функция для показа уведомлений
+     function showAlert(message, type = 'info') {
+         const alertDiv = document.createElement('div');
+         alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+         alertDiv.innerHTML = `
+             ${message}
+             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+         `;
+         
+         const container = document.querySelector('.container-fluid');
+         container.insertBefore(alertDiv, container.firstChild);
+         
+         // Автоматически скрываем через 5 секунд
+         setTimeout(() => {
+             if (alertDiv.parentNode) {
+                 alertDiv.remove();
+             }
+         }, 5000);
+     }
+ </script>
 {% endblock %} 

@@ -99,19 +99,7 @@
                         </a>
                     </div>
                     <div class="col-md-6 mb-3">
-                        <a href="/subscriptions" class="btn btn-success w-100">
-                            <i class="fas fa-credit-card me-2"></i>
-                            Управление подписками
-                        </a>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <button class="btn btn-info w-100" onclick="exportUsers()">
-                            <i class="fas fa-download me-2"></i>
-                            Экспорт данных
-                        </button>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <button class="btn btn-warning w-100" onclick="refreshStats()">
+                        <button onclick="refreshStats()" class="btn btn-outline-primary w-100">
                             <i class="fas fa-sync-alt me-2"></i>
                             Обновить статистику
                         </button>
@@ -126,7 +114,7 @@
         <div class="card">
             <div class="card-header">
                 <h5 class="mb-0">
-                    <i class="fas fa-info-circle me-2"></i>
+                    <i class="fas fa-server me-2"></i>
                     Системная информация
                 </h5>
             </div>
@@ -134,25 +122,7 @@
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <div class="d-flex align-items-center">
-                            <i class="fas fa-server text-primary me-2"></i>
-                            <div>
-                                <small class="text-muted">Статус бота</small>
-                                <div class="fw-bold text-success">Активен</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <div class="d-flex align-items-center">
-                            <i class="fas fa-database text-info me-2"></i>
-                            <div>
-                                <small class="text-muted">База данных</small>
-                                <div class="fw-bold text-success">Подключена</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <div class="d-flex align-items-center">
-                            <i class="fas fa-clock text-warning me-2"></i>
+                            <i class="fas fa-clock text-success me-2"></i>
                             <div>
                                 <small class="text-muted">Время работы</small>
                                 <div class="fw-bold" id="uptime">Загрузка...</div>
@@ -175,29 +145,31 @@
 </div>
 
 <div class="row">
-    <!-- Последние активности -->
-    <div class="col-12">
+    <!-- Последние пользователи -->
+    <div class="col-12 mb-4">
         <div class="card">
             <div class="card-header">
                 <h5 class="mb-0">
-                    <i class="fas fa-chart-line me-2"></i>
-                    Последние активности
+                    <i class="fas fa-users me-2"></i>
+                    Последние пользователи
                 </h5>
             </div>
             <div class="card-body">
                 <div class="table-responsive">
-                    <table class="table table-hover">
+                    <table class="table table-hover" id="recent-users-table">
                         <thead>
                             <tr>
-                                <th>Время</th>
-                                <th>Событие</th>
-                                <th>Пользователь</th>
-                                <th>Детали</th>
+                                <th>ID</th>
+                                <th>ФИО</th>
+                                <th>Username</th>
+                                <th>Компания</th>
+                                <th>Дата регистрации</th>
+                                <th>Подписка</th>
                             </tr>
                         </thead>
-                        <tbody id="activity-log">
+                        <tbody>
                             <tr>
-                                <td colspan="4" class="text-center text-muted">
+                                <td colspan="7" class="text-center text-muted">
                                     <i class="fas fa-spinner fa-spin me-2"></i>
                                     Загрузка данных...
                                 </td>
@@ -209,6 +181,8 @@
         </div>
     </div>
 </div>
+
+
 {% endblock %}
 
 {% block scripts %}

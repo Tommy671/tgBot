@@ -30,18 +30,18 @@ if not os.environ.get('TELEGRAM_TOKEN') or os.environ.get('TELEGRAM_TOKEN') == '
 
 def check_dependencies():
     """Проверка зависимостей"""
-    required_packages = [
-        'fastapi',
-        'uvicorn',
-        'sqlalchemy',
-        'python-telegram-bot',
-        'pydantic-settings'
-    ]
+    required_packages = {
+        'fastapi': 'fastapi',
+        'uvicorn': 'uvicorn',
+        'sqlalchemy': 'sqlalchemy',
+        'python-telegram-bot': 'telegram',
+        'pydantic-settings': 'pydantic_settings'
+    }
     
     missing_packages = []
-    for package in required_packages:
+    for package, import_name in required_packages.items():
         try:
-            __import__(package.replace('-', '_'))
+            __import__(import_name)
         except ImportError:
             missing_packages.append(package)
     

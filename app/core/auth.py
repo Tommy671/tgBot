@@ -50,11 +50,19 @@ def authenticate_admin(db: Session, username: str, password: str):
 
 def get_token_from_cookies(request: Request) -> Optional[str]:
     """Получение токена из cookies"""
-    return request.cookies.get("access_token")
+    token = request.cookies.get("access_token")
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.debug(f"Cookies received: {dict(request.cookies)}")
+    logger.debug(f"Token from cookies: {token[:20] if token else 'None'}...")
+    return token
 
 
 def get_current_admin_from_cookies(request: Request, db: Session):
     """Получение текущего администратора из cookies"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Не удалось подтвердить учетные данные",
@@ -63,17 +71,25 @@ def get_current_admin_from_cookies(request: Request, db: Session):
     
     token = get_token_from_cookies(request)
     if not token:
+        logger.debug("No token found in cookies")
         raise credentials_exception
     
-    username = verify_token(token)
-    if username is None:
+    try:
+        username = verify_token(token)
+        if username is None:
+            logger.debug("Token verification failed")
+            raise credentials_exception
+        
+        admin = db.query(AdminUser).filter(AdminUser.username == username).first()
+        if admin is None:
+            logger.debug(f"Admin user {username} not found in database")
+            raise credentials_exception
+        
+        logger.debug(f"Admin {username} authenticated successfully")
+        return admin
+    except Exception as e:
+        logger.debug(f"Auth error: {e}")
         raise credentials_exception
-    
-    admin = db.query(AdminUser).filter(AdminUser.username == username).first()
-    if admin is None:
-        raise credentials_exception
-    
-    return admin
 
 
 def get_current_admin(

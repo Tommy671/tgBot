@@ -49,6 +49,7 @@ class TelegramBot:
         # Основной ConversationHandler
         conv_handler = ConversationHandler(
             entry_points=[CommandHandler('start', self.start_command)],
+            per_message=False,
             states={
                 FILLING_QUESTIONNAIRE: [
                     MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_questionnaire)
@@ -61,15 +62,16 @@ class TelegramBot:
                     CallbackQueryHandler(self.handle_private_chat, pattern='^private_chat'),
                     CallbackQueryHandler(self.handle_settings, pattern='^settings'),
                     CallbackQueryHandler(self.handle_profile, pattern='^profile'),
+                    CallbackQueryHandler(self.handle_update_profile, pattern='^update_profile'),
                     CallbackQueryHandler(self.handle_back_to_main, pattern='^main_back')
                 ],
                 SETTINGS_MENU: [
                     CallbackQueryHandler(self.handle_settings_menu, pattern='^settings_'),
-                    CallbackQueryHandler(self.handle_back_to_main, pattern='^back_main')
+                    CallbackQueryHandler(self.handle_back_to_main, pattern='^main_back')
                 ],
                 PAYMENT_MENU: [
                     CallbackQueryHandler(self.handle_payment_menu, pattern='^payment_'),
-                    CallbackQueryHandler(self.handle_back_to_main, pattern='^back_main')
+                    CallbackQueryHandler(self.handle_back_to_main, pattern='^main_back')
                 ]
             },
             fallbacks=[CommandHandler('start', self.start_command)]
@@ -119,8 +121,16 @@ class TelegramBot:
             with get_db_session() as db:
                 existing_user = db.query(User).filter(User.telegram_id == telegram_id).first()
                 if existing_user and existing_user.consent_given:
-                    # Пользователь уже зарегистрирован
-                    await self.show_main_menu(update, context)
+                    # Пользователь уже зарегистрирован, предлагаем обновить данные
+                    keyboard = [
+                        [InlineKeyboardButton("🔄 Обновить данные", callback_data="update_profile")],
+                        [InlineKeyboardButton("🏠 Главное меню", callback_data="main_back")]
+                    ]
+                    await update.message.reply_text(
+                        "👋 С возвращением! Вы уже зарегистрированы в системе.\n\n"
+                        "Выберите действие:",
+                        reply_markup=InlineKeyboardMarkup(keyboard)
+                    )
                     return MAIN_MENU
                 else:
                     # Начинаем регистрацию
@@ -231,21 +241,39 @@ class TelegramBot:
             
             try:
                 with get_db_session() as db:
-                    # Создаем пользователя
-                    new_user = User(
-                        telegram_id=user_id,
-                        username=user.username,
-                        full_name=user_data['data'].get('full_name', ''),
-                        activity_field=user_data['data'].get('activity_field', ''),
-                        company=user_data['data'].get('company', ''),
-                        role_in_company=user_data['data'].get('role_in_company', ''),
-                        contact_number=user_data['data'].get('contact_number', ''),
-                        participation_purpose=user_data['data'].get('participation_purpose', ''),
-                        consent_given=True,
-                        consent_date=datetime.now(timezone.utc)
-                    )
+                    # Проверяем, существует ли пользователь
+                    existing_user = db.query(User).filter(User.telegram_id == user_id).first()
                     
-                    db.add(new_user)
+                    if existing_user:
+                        # Обновляем существующего пользователя
+                        existing_user.username = user.username
+                        existing_user.full_name = user_data['data'].get('full_name', '')
+                        existing_user.activity_field = user_data['data'].get('activity_field', '')
+                        existing_user.company = user_data['data'].get('company', '')
+                        existing_user.role_in_company = user_data['data'].get('role_in_company', '')
+                        existing_user.contact_number = user_data['data'].get('contact_number', '')
+                        existing_user.participation_purpose = user_data['data'].get('participation_purpose', '')
+                        existing_user.consent_given = True
+                        existing_user.consent_date = datetime.now(timezone.utc)
+                        existing_user.last_activity = datetime.now(timezone.utc)
+                        logger.info(f"Пользователь {user_id} обновлен")
+                    else:
+                        # Создаем нового пользователя
+                        new_user = User(
+                            telegram_id=user_id,
+                            username=user.username,
+                            full_name=user_data['data'].get('full_name', ''),
+                            activity_field=user_data['data'].get('activity_field', ''),
+                            company=user_data['data'].get('company', ''),
+                            role_in_company=user_data['data'].get('role_in_company', ''),
+                            contact_number=user_data['data'].get('contact_number', ''),
+                            participation_purpose=user_data['data'].get('participation_purpose', ''),
+                            consent_given=True,
+                            consent_date=datetime.now(timezone.utc)
+                        )
+                        db.add(new_user)
+                        logger.info(f"Новый пользователь {user_id} создан")
+                    
                     # commit происходит автоматически в контекстном менеджере
             except Exception as e:
                 logger.error(f"Ошибка при создании пользователя: {e}")
@@ -303,7 +331,6 @@ class TelegramBot:
             await self.show_main_menu(update, context)
             return MAIN_MENU
     
-    @cache_result(ttl=60, key_prefix="user_subscription")
     async def handle_private_chat(self, update: Update, context):
         """Обработка запроса на приватный чат"""
         query = update.callback_query
@@ -352,7 +379,7 @@ class TelegramBot:
         keyboard = [
             [InlineKeyboardButton("📝 Заполнить анкету заново", callback_data="settings_refill")],
             [InlineKeyboardButton("💳 Оплата", callback_data="settings_payment")],
-            [InlineKeyboardButton("🏠 Вернуться в главное меню", callback_data="back_main")]
+            [InlineKeyboardButton("🏠 Вернуться в главное меню", callback_data="main_back")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         
@@ -384,7 +411,6 @@ class TelegramBot:
             await self.show_payment_menu(update, context)
             return PAYMENT_MENU
     
-    @cache_result(ttl=30, key_prefix="payment_menu")
     async def show_payment_menu(self, update: Update, context):
         """Показ меню оплаты"""
         query = update.callback_query
@@ -402,7 +428,7 @@ class TelegramBot:
                     keyboard = [
                         [InlineKeyboardButton("🔄 Подключить автопродление", callback_data="payment_auto_renewal")],
                         [InlineKeyboardButton("❌ Отключить подписку", callback_data="payment_cancel")],
-                        [InlineKeyboardButton("🏠 Вернуться в главное меню", callback_data="back_main")]
+                        [InlineKeyboardButton("🏠 Вернуться в главное меню", callback_data="main_back")]
                     ]
                     
                     await query.edit_message_text(
@@ -417,7 +443,7 @@ class TelegramBot:
                     # У пользователя нет подписки
                     keyboard = [
                         [InlineKeyboardButton("💳 Оформить подписку", callback_data="payment_subscribe")],
-                        [InlineKeyboardButton("🏠 Вернуться в главное меню", callback_data="back_main")]
+                        [InlineKeyboardButton("🏠 Вернуться в главное меню", callback_data="main_back")]
                     ]
                     
                     await query.edit_message_text(
@@ -449,7 +475,7 @@ class TelegramBot:
                 "🔗 Ссылка для оплаты: https://example.com/payment\n\n"
                 "После успешной оплаты ваша подписка будет активирована автоматически.",
                 reply_markup=InlineKeyboardMarkup([[
-                    InlineKeyboardButton("🏠 Вернуться в главное меню", callback_data="back_main")
+                    InlineKeyboardButton("🏠 Вернуться в главное меню", callback_data="main_back")
                 ]])
             )
         
@@ -467,7 +493,7 @@ class TelegramBot:
                             "✅ Автопродление подключено!\n\n"
                             "Ваша подписка будет автоматически продлеваться каждый месяц.",
                             reply_markup=InlineKeyboardMarkup([[
-                                InlineKeyboardButton("🏠 Вернуться в главное меню", callback_data="back_main")
+                                InlineKeyboardButton("🏠 Вернуться в главное меню", callback_data="main_back")
                             ]])
                         )
             except Exception as e:
@@ -475,7 +501,7 @@ class TelegramBot:
                 await query.edit_message_text(
                     "❌ Произошла ошибка. Попробуйте позже.",
                     reply_markup=InlineKeyboardMarkup([[
-                        InlineKeyboardButton("🏠 Вернуться в главное меню", callback_data="back_main")
+                        InlineKeyboardButton("🏠 Вернуться в главное меню", callback_data="main_back")
                     ]])
                 )
         
@@ -494,7 +520,7 @@ class TelegramBot:
                             "❌ Подписка отключена!\n\n"
                             "Ваша подписка будет активна до конца оплаченного периода.",
                             reply_markup=InlineKeyboardMarkup([[
-                                InlineKeyboardButton("🏠 Вернуться в главное меню", callback_data="back_main")
+                                InlineKeyboardButton("🏠 Вернуться в главное меню", callback_data="main_back")
                             ]])
                         )
             except Exception as e:
@@ -502,11 +528,10 @@ class TelegramBot:
                 await query.edit_message_text(
                     "❌ Произошла ошибка. Попробуйте позже.",
                     reply_markup=InlineKeyboardMarkup([[
-                        InlineKeyboardButton("🏠 Вернуться в главное меню", callback_data="back_main")
+                        InlineKeyboardButton("🏠 Вернуться в главное меню", callback_data="main_back")
                     ]])
                 )
     
-    @cache_result(ttl=120, key_prefix="user_profile")
     async def handle_profile(self, update: Update, context):
         """Обработка просмотра профиля"""
         query = update.callback_query
@@ -566,6 +591,23 @@ class TelegramBot:
                     InlineKeyboardButton("🏠 Вернуться в главное меню", callback_data="main_back")
                 ]])
             )
+    
+    async def handle_update_profile(self, update: Update, context):
+        """Обработка обновления профиля"""
+        query = update.callback_query
+        await query.answer()
+        
+        # Начинаем заполнение анкеты заново
+        user = update.effective_user
+        user_data_temp[user.id] = {
+            'step': 0,
+            'data': {}
+        }
+        
+        await query.edit_message_text(
+            "📝 Обновление данных профиля\n\nВведите ваше ФИО (фамилия и имя через пробел):"
+        )
+        return FILLING_QUESTIONNAIRE
     
     async def handle_back_to_main(self, update: Update, context):
         """Возврат в главное меню"""
