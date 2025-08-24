@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+
+{% block title %}Дашборд - CRM Админка{% endblock %}
+
+{% block page_title %}Статистика{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Статистика -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card stats-card h-100">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-white-50 text-uppercase mb-1">
+                            Всего пользователей
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-white" id="total-users">0</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-users fa-2x text-white-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card stats-card h-100">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-white-50 text-uppercase mb-1">
+                            Активные подписки
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-white" id="active-subscriptions">0</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-credit-card fa-2x text-white-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card stats-card h-100">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-white-50 text-uppercase mb-1">
+                            Новых сегодня
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-white" id="new-users-today">0</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-user-plus fa-2x text-white-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card stats-card h-100">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-white-50 text-uppercase mb-1">
+                            Истекают через неделю
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-white" id="expiring-subscriptions">0</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-exclamation-triangle fa-2x text-white-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Быстрые действия -->
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-bolt me-2"></i>
+                    Быстрые действия
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <a href="/users" class="btn btn-primary w-100">
+                            <i class="fas fa-users me-2"></i>
+                            Просмотр пользователей
+                        </a>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <a href="/subscriptions" class="btn btn-success w-100">
+                            <i class="fas fa-credit-card me-2"></i>
+                            Управление подписками
+                        </a>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <button class="btn btn-info w-100" onclick="exportUsers()">
+                            <i class="fas fa-download me-2"></i>
+                            Экспорт данных
+                        </button>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <button class="btn btn-warning w-100" onclick="refreshStats()">
+                            <i class="fas fa-sync-alt me-2"></i>
+                            Обновить статистику
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Системная информация -->
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Системная информация
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-server text-primary me-2"></i>
+                            <div>
+                                <small class="text-muted">Статус бота</small>
+                                <div class="fw-bold text-success">Активен</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-database text-info me-2"></i>
+                            <div>
+                                <small class="text-muted">База данных</small>
+                                <div class="fw-bold text-success">Подключена</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-clock text-warning me-2"></i>
+                            <div>
+                                <small class="text-muted">Время работы</small>
+                                <div class="fw-bold" id="uptime">Загрузка...</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-memory text-danger me-2"></i>
+                            <div>
+                                <small class="text-muted">Использование памяти</small>
+                                <div class="fw-bold" id="memory-usage">Загрузка...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Последние активности -->
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-line me-2"></i>
+                    Последние активности
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Время</th>
+                                <th>Событие</th>
+                                <th>Пользователь</th>
+                                <th>Детали</th>
+                            </tr>
+                        </thead>
+                        <tbody id="activity-log">
+                            <tr>
+                                <td colspan="4" class="text-center text-muted">
+                                    <i class="fas fa-spinner fa-spin me-2"></i>
+                                    Загрузка данных...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Функция обновления статистики
+    function refreshStats() {
+        getDashboardStats();
+        showAlert('Статистика обновлена', 'success');
+    }
+    
+    // Функция экспорта пользователей
+    function exportUsers() {
+        // Здесь можно добавить логику экспорта
+        showAlert('Функция экспорта в разработке', 'info');
+    }
+    
+    // Обновление времени работы
+    function updateUptime() {
+        const startTime = new Date();
+        setInterval(() => {
+            const now = new Date();
+            const diff = now - startTime;
+            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            document.getElementById('uptime').textContent = `${hours}ч ${minutes}м`;
+        }, 60000); // Обновляем каждую минуту
+    }
+    
+    // Обновление использования памяти (заглушка)
+    function updateMemoryUsage() {
+        document.getElementById('memory-usage').textContent = '~45 MB';
+    }
+    
+    // Инициализация при загрузке страницы
+    document.addEventListener('DOMContentLoaded', function() {
+        updateUptime();
+        updateMemoryUsage();
+        
+        // Загружаем статистику
+        getDashboardStats();
+        
+        // Обновляем статистику каждые 30 секунд
+        setInterval(getDashboardStats, 30000);
+    });
+</script>
+{% endblock %} 

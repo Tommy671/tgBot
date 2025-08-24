@@ -1,0 +1,37 @@
+# FastAPI и веб-фреймворк
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+
+# База данных
+sqlalchemy==2.0.23
+alembic==1.12.1
+
+# Аутентификация и безопасность
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
+
+# Telegram Bot
+python-telegram-bot==20.7
+
+# Шаблоны и статические файлы
+jinja2==3.1.2
+aiofiles==23.2.1
+
+# Конфигурация
+python-dotenv==1.0.0
+pydantic-settings==2.1.0
+
+# Утилиты
+python-dateutil==2.8.2
+
+# Оптимизация и мониторинг
+psutil==5.9.6
+memory-profiler==0.61.0
+
+# Логирование
+structlog==23.2.0
+
+# Кэширование (опционально, для продакшена)
+redis==5.0.1 

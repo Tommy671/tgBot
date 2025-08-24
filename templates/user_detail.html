@@ -1,0 +1,390 @@
+{% extends "base.html" %}
+
+{% block title %}Профиль пользователя - CRM Админка{% endblock %}
+
+{% set timedelta = timedelta %}
+{% block page_title %}Профиль пользователя{% endblock %}
+
+{% block page_actions %}
+<div class="d-flex">
+    <a href="{{ url_for('users') }}" class="btn btn-secondary me-2">
+        <i class="fas fa-arrow-left me-2"></i>Назад к списку
+    </a>
+    <button class="btn btn-success me-2" onclick="manageSubscription({{ user.id }})">
+        <i class="fas fa-credit-card me-2"></i>Управление подпиской
+    </button>
+    <button class="btn btn-info" onclick="exportUserData({{ user.id }})">
+        <i class="fas fa-download me-2"></i>Экспорт данных
+    </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Основная информация -->
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="m-0 font-weight-bold">
+                    <i class="fas fa-user me-2"></i>Основная информация
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">ID пользователя</label>
+                        <div class="form-control-plaintext">{{ user.id or 'Не указано' }}</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Telegram ID</label>
+                        <div class="form-control-plaintext">{{ user.telegram_id or 'Не указано' }}</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">ФИО</label>
+                        <div class="form-control-plaintext">{{ user.full_name or 'Не указано' }}</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Telegram Username</label>
+                        <div class="form-control-plaintext">
+                            <i class="fab fa-telegram me-2"></i>@{{ user.username or 'Нет' }}
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Сфера деятельности</label>
+                        <div class="form-control-plaintext">{{ user.activity_field or 'Не указано' }}</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Компания</label>
+                        <div class="form-control-plaintext">{{ user.company or 'Не указано' }}</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Роль в компании</label>
+                        <div class="form-control-plaintext">{{ user.role_in_company or 'Не указано' }}</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Контактный номер</label>
+                        <div class="form-control-plaintext">
+                            <i class="fas fa-phone me-2"></i>{{ user.contact_number or 'Не указано' }}
+                        </div>
+                    </div>
+                    <div class="col-12 mb-3">
+                        <label class="form-label fw-bold">Цель участия</label>
+                        <div class="form-control-plaintext">{{ user.participation_purpose or 'Не указано' }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Информация о подписке -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="m-0 font-weight-bold">
+                    <i class="fas fa-credit-card me-2"></i>Информация о подписке
+                </h6>
+            </div>
+            <div class="card-body">
+                {% if user.subscription %}
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Статус подписки</label>
+                            <div class="form-control-plaintext">
+                                {% if user.subscription and user.subscription.is_active() %}
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-check me-1"></i>Активна
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-secondary">
+                                        <i class="fas fa-times me-1"></i>Неактивна
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Дата начала</label>
+                            <div class="form-control-plaintext">
+                                {% if user.subscription.start_date %}{{ user.subscription.start_date.strftime('%d.%m.%Y %H:%M') }}{% else %}Не указано{% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Дата окончания</label>
+                            <div class="form-control-plaintext">
+                                {% if user.subscription.end_date %}{{ user.subscription.end_date.strftime('%d.%m.%Y %H:%M') }}{% else %}Не указано{% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Стоимость</label>
+                            <div class="form-control-plaintext">
+                                {% if user.subscription.payment_amount %}{{ user.subscription.payment_amount }} ₽{% else %}Не указано{% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Автопродление</label>
+                            <div class="form-control-plaintext">
+                                {% if user.subscription.auto_renewal %}
+                                    <span class="badge bg-success">Включено</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Отключено</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Осталось дней</label>
+                            <div class="form-control-plaintext">
+                                {% if user.subscription and user.subscription.is_active() %}
+                                    {% if user.subscription.end_date %}
+                                        {% set days_left = (user.subscription.end_date - now).days %}
+                                        {% if days_left > 0 %}
+                                            <span class="badge bg-info">{{ days_left }} дн.</span>
+                                        {% else %}
+                                            <span class="badge bg-warning">Истекает сегодня</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="badge bg-secondary">Не указано</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="badge bg-danger">Истекла</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-credit-card fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">Подписка отсутствует</h5>
+                        <p class="text-muted">У пользователя нет активной подписки</p>
+                        <button class="btn btn-success" onclick="createSubscription({{ user.id }})">
+                            <i class="fas fa-plus me-2"></i>Создать подписку
+                        </button>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Боковая панель -->
+    <div class="col-lg-4">
+        <!-- Статистика активности -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="m-0 font-weight-bold">
+                    <i class="fas fa-chart-line me-2"></i>Статистика
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Дата регистрации</label>
+                    <div class="form-control-plaintext">
+                        {% if user.registration_date %}{{ user.registration_date.strftime('%d.%m.%Y %H:%M') }}{% else %}Не указано{% endif %}
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Последняя активность</label>
+                    <div class="form-control-plaintext">
+                        {% if user.last_activity %}{{ user.last_activity.strftime('%d.%m.%Y %H:%M') }}{% else %}Не указано{% endif %}
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Согласие на обработку данных</label>
+                    <div class="form-control-plaintext">
+                        {% if user.consent_given %}
+                            <span class="badge bg-success">
+                                <i class="fas fa-check me-1"></i>Дано
+                            </span>
+                        {% else %}
+                            <span class="badge bg-danger">
+                                <i class="fas fa-times me-1"></i>Не дано
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+                                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Дней в системе</label>
+                                    <div class="form-control-plaintext">
+                                        {% if user.registration_date %}
+                                            {% set days_in_system = (now - user.registration_date).days %}
+                                            <span class="badge bg-info">{{ days_in_system }} дн.</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Не указано</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+            </div>
+        </div>
+
+        <!-- Быстрые действия -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="m-0 font-weight-bold">
+                    <i class="fas fa-bolt me-2"></i>Быстрые действия
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary" onclick="editUser({{ user.id }})">
+                        <i class="fas fa-edit me-2"></i>Редактировать
+                    </button>
+                    <button class="btn btn-outline-success" onclick="extendSubscription({{ user.id }})">
+                        <i class="fas fa-plus me-2"></i>Продлить подписку
+                    </button>
+                    <button class="btn btn-outline-warning" onclick="sendNotification({{ user.id }})">
+                        <i class="fas fa-bell me-2"></i>Отправить уведомление
+                    </button>
+                    <button class="btn btn-outline-danger" onclick="deleteUser({{ user.id }})">
+                        <i class="fas fa-trash me-2"></i>Удалить пользователя
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно управления подпиской -->
+<div class="modal fade" id="subscriptionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Управление подпиской</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="subscriptionInfo"></div>
+                <hr>
+                <div class="mb-3">
+                    <label for="subscriptionDays" class="form-label">Продлить подписку на (дней):</label>
+                    <input type="number" class="form-control" id="subscriptionDays" value="30" min="1" max="365">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-success" onclick="extendSubscription()">
+                    <i class="fas fa-plus me-2"></i>Продлить
+                </button>
+                <button type="button" class="btn btn-danger" onclick="cancelSubscription()">
+                    <i class="fas fa-times me-2"></i>Отменить
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentUserId = {{ user.id }};
+
+function manageSubscription(userId) {
+    currentUserId = userId;
+    
+    // Загружаем информацию о подписке
+    fetch(`/api/user/${userId}/subscription`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        document.getElementById('subscriptionInfo').innerHTML = `
+            <div class="alert alert-info">
+                <strong>Пользователь:</strong> {{ user.full_name }}<br>
+                <strong>Текущий статус:</strong> ${data.subscription_status}<br>
+                ${data.end_date ? `<strong>Действует до:</strong> ${data.end_date}` : ''}
+            </div>
+        `;
+        
+        const modal = new bootstrap.Modal(document.getElementById('subscriptionModal'));
+        modal.show();
+    });
+}
+
+function createSubscription(userId) {
+    const days = prompt('Введите количество дней для подписки:', '30');
+    if (days && !isNaN(days)) {
+        fetch(`/api/user/${userId}/subscription`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                action: 'extend',
+                days: parseInt(days)
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert('Ошибка: ' + data.message);
+            }
+        });
+    }
+}
+
+function extendSubscription() {
+    const days = document.getElementById('subscriptionDays').value;
+    
+    fetch(`/api/user/${currentUserId}/subscription`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            action: 'extend',
+            days: parseInt(days)
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Ошибка: ' + data.message);
+        }
+    });
+}
+
+function cancelSubscription() {
+    if (confirm('Вы уверены, что хотите отменить подписку?')) {
+        fetch(`/api/user/${currentUserId}/subscription`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                action: 'cancel'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert('Ошибка: ' + data.message);
+            }
+        });
+    }
+}
+
+function editUser(userId) {
+    alert('Функция редактирования пользователя будет добавлена в следующей версии');
+}
+
+function sendNotification(userId) {
+    alert('Функция отправки уведомлений будет добавлена в следующей версии');
+}
+
+function deleteUser(userId) {
+    if (confirm('Вы уверены, что хотите удалить пользователя? Это действие нельзя отменить.')) {
+        alert('Функция удаления пользователя будет добавлена в следующей версии');
+    }
+}
+
+function exportUserData(userId) {
+    alert('Функция экспорта данных пользователя будет добавлена в следующей версии');
+}
+</script>
+{% endblock %} 
