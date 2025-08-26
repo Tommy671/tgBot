@@ -3,21 +3,32 @@ version: '3.8'
 services:
   telegram-crm:
     build: .
+    container_name: telegram-crm-bot
     ports:
       - "8001:8001"
     environment:
       - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
       - SECRET_KEY=${SECRET_KEY}
-      - DATABASE_URL=sqlite:///./bot_database.db
+      - DATABASE_URL=sqlite:///./data/bot_database.db
       - HOST=0.0.0.0
       - PORT=8001
       - ALGORITHM=HS256
       - ACCESS_TOKEN_EXPIRE_MINUTES=30
+      - LOG_LEVEL=INFO
+      - LOG_FORMAT=%(asctime)s - %(name)s - %(levelname)s - %(message)s
     volumes:
       - ./data:/app/data
+      - ./logs:/app/logs
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 40s
+    networks:
+      - telegram-crm-network
+
+networks:
+  telegram-crm-network:
+    driver: bridge

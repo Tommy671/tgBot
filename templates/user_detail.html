@@ -28,15 +28,15 @@
                         <div class="mb-3">
                             <label class="form-label fw-bold">ID пользователя:</label>
                             <p class="mb-0">{{ user.id }}</p>
-                        </div>
+                    </div>
                         <div class="mb-3">
                             <label class="form-label fw-bold">Telegram ID:</label>
                             <p class="mb-0">{{ user.telegram_id }}</p>
-                        </div>
+                    </div>
                         <div class="mb-3">
                             <label class="form-label fw-bold">Username:</label>
                             <p class="mb-0" data-username="@{{ user.username or 'Не указан' }}">@{{ user.username or 'Не указан' }}</p>
-                        </div>
+                    </div>
                         <div class="mb-3">
                             <label class="form-label fw-bold">ФИО:</label>
                             <p class="mb-0">{{ user.full_name or 'Не указано' }}</p>
@@ -46,32 +46,32 @@
                         <div class="mb-3">
                             <label class="form-label fw-bold">Телефон:</label>
                             <p class="mb-0">{{ user.contact_number or 'Не указан' }}</p>
-                        </div>
+                    </div>
                         <div class="mb-3">
                             <label class="form-label fw-bold">Компания:</label>
                             <p class="mb-0">{{ user.company or 'Не указана' }}</p>
-                        </div>
+                    </div>
                         <div class="mb-3">
                             <label class="form-label fw-bold">Роль в компании:</label>
                             <p class="mb-0">{{ user.role_in_company or 'Не указана' }}</p>
-                        </div>
+                    </div>
                         <div class="mb-3">
                             <label class="form-label fw-bold">Сфера деятельности:</label>
                             <p class="mb-0">{{ user.activity_field or 'Не указана' }}</p>
-                        </div>
-                    </div>
                 </div>
-                
+            </div>
+        </div>
+
                 {% if user.participation_purpose %}
                 <div class="mb-3">
                     <label class="form-label fw-bold">Цель участия:</label>
                     <p class="mb-0">{{ user.participation_purpose }}</p>
-                </div>
+                    </div>
                 {% endif %}
             </div>
         </div>
     </div>
-    
+
     <!-- Дополнительная информация -->
     <div class="col-lg-4">
         <div class="card">
@@ -91,7 +91,7 @@
                             Не указана
                         {% endif %}
                     </p>
-                </div>
+                    </div>
                 
                 <div class="mb-3">
                     <label class="form-label fw-bold">В системе:</label>
@@ -102,23 +102,23 @@
                             Неизвестно
                         {% endif %}
                     </p>
-                </div>
+                    </div>
                 
-                <div class="mb-3">
+                                                <div class="mb-3">
                     <label class="form-label fw-bold">Статус подписки:</label>
                     <p class="mb-0">
                         {% if user.subscription_status == 'Активна' %}
                             <span class="badge bg-success">{{ user.subscription_status }}</span>
                         {% elif user.subscription_status == 'Истекла' %}
                             <span class="badge bg-warning">{{ user.subscription_status }}</span>
-                        {% else %}
+                                        {% else %}
                             <span class="badge bg-secondary">{{ user.subscription_status }}</span>
-                        {% endif %}
+                                        {% endif %}
                     </p>
-                </div>
+                                </div>
             </div>
         </div>
-        
+
         <!-- Быстрые действия -->
         <div class="card mt-3">
             <div class="card-header">

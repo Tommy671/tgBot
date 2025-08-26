@@ -2,225 +2,210 @@
 
 {% block title %}Пользователи - CRM Админка{% endblock %}
 
-{% block page_title %}Пользователи{% endblock %}
+{% block page_title %}
+    <i class="fas fa-users me-3 text-primary"></i>
+    Пользователи
+{% endblock %}
 
 {% block page_actions %}
-<div class="btn-group" role="group">
-    <button type="button" class="btn btn-outline-primary" onclick="refreshUsers()">
-        <i class="fas fa-sync-alt me-1"></i>
-        Обновить
-    </button>
-    <button type="button" class="btn btn-outline-success" onclick="exportUsers()">
-        <i class="fas fa-download me-1"></i>
-        Экспорт
-    </button>
-</div>
+    <div class="d-flex gap-2">
+        <button class="btn btn-outline-primary" onclick="refreshUsers()">
+            <i class="fas fa-sync-alt me-2"></i>
+            Обновить
+        </button>
+        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#exportModal">
+            <i class="fas fa-download me-2"></i>
+            Экспорт
+        </button>
+    </div>
 {% endblock %}
 
 {% block content %}
-<!-- Поиск и фильтры -->
-<div class="card mb-4">
-    <div class="card-body">
-        <div class="row">
-            <div class="col-md-6">
-                <div class="input-group">
-                    <span class="input-group-text">
-                        <i class="fas fa-search"></i>
-                    </span>
-                    <input type="text" class="form-control" id="search-input" placeholder="Поиск по имени, username, телефону, компании...">
+<!-- Фильтры и поиск -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-filter me-2"></i>
+                    Фильтры и поиск
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label for="searchInput" class="form-label">Поиск</label>
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="fas fa-search"></i>
+                            </span>
+                            <input type="text" class="form-control" id="searchInput" placeholder="Поиск по имени, username, компании...">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="statusFilter" class="form-label">Статус</label>
+                        <select class="form-select" id="statusFilter">
+                            <option value="">Все статусы</option>
+                            <option value="active">Активные</option>
+                            <option value="inactive">Неактивные</option>
+                            <option value="with_subscription">С подпиской</option>
+                            <option value="without_subscription">Без подписки</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="sortBy" class="form-label">Сортировка</label>
+                        <select class="form-select" id="sortBy">
+                            <option value="registration_date">По дате регистрации</option>
+                            <option value="full_name">По имени</option>
+                            <option value="company">По компании</option>
+                            <option value="subscription_status">По статусу подписки</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">&nbsp;</label>
+                        <button class="btn btn-primary w-100" onclick="applyFiltersAndSearch()">
+                            <i class="fas fa-search me-2"></i>
+                            Найти
+                        </button>
+                    </div>
                 </div>
-            </div>
-            <div class="col-md-3">
-                <select class="form-select" id="status-filter">
-                    <option value="">Все статусы</option>
-                    <option value="active">Активные</option>
-                    <option value="inactive">Неактивные</option>
-                    <option value="with_subscription">С подпиской</option>
-                    <option value="without_subscription">Без подписки</option>
-                </select>
-            </div>
-            <div class="col-md-3">
-                <select class="form-select" id="sort-filter">
-                    <option value="registration_date_desc">Дата регистрации (новые)</option>
-                    <option value="registration_date_asc">Дата регистрации (старые)</option>
-                    <option value="last_activity_desc">Последняя активность</option>
-                    <option value="name_asc">По имени (А-Я)</option>
-                    <option value="name_desc">По имени (Я-А)</option>
-                </select>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Статистика -->
+<!-- Статистика пользователей -->
 <div class="row mb-4">
-    <div class="col-md-3">
-        <div class="card bg-primary text-white">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <div>
-                        <h6 class="card-title">Всего пользователей</h6>
-                        <h3 class="mb-0" id="total-users-count">0</h3>
-                    </div>
-                    <div class="align-self-center">
-                        <i class="fas fa-users fa-2x"></i>
-                    </div>
-                </div>
+    <div class="col-md-3 mb-3">
+        <div class="card border-0 bg-primary bg-gradient text-white">
+            <div class="card-body text-center">
+                <div class="display-6 fw-bold" id="total-users-count">0</div>
+                <p class="mb-0">Всего пользователей</p>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card bg-success text-white">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <div>
-                        <h6 class="card-title">Активные</h6>
-                        <h3 class="mb-0" id="active-users-count">0</h3>
-                    </div>
-                    <div class="align-self-center">
-                        <i class="fas fa-user-check fa-2x"></i>
-                    </div>
-                </div>
+    <div class="col-md-3 mb-3">
+        <div class="card border-0 bg-success bg-gradient text-white">
+            <div class="card-body text-center">
+                <div class="display-6 fw-bold" id="active-users-count">0</div>
+                <p class="mb-0">Активных</p>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card bg-info text-white">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <div>
-                        <h6 class="card-title">С подпиской</h6>
-                        <h3 class="mb-0" id="subscribed-users-count">0</h3>
-                    </div>
-                    <div class="align-self-center">
-                        <i class="fas fa-credit-card fa-2x"></i>
-                    </div>
-                </div>
+    <div class="col-md-3 mb-3">
+        <div class="card border-0 bg-info bg-gradient text-white">
+            <div class="card-body text-center">
+                <div class="display-6 fw-bold" id="users-with-subscription-count">0</div>
+                <p class="mb-0">С подпиской</p>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card bg-warning text-white">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <div>
-                        <h6 class="card-title">Новых сегодня</h6>
-                        <h3 class="mb-0" id="new-users-count">0</h3>
-                    </div>
-                    <div class="align-self-center">
-                        <i class="fas fa-user-plus fa-2x"></i>
-                    </div>
-                </div>
+    <div class="col-md-3 mb-3">
+        <div class="card border-0 bg-warning bg-gradient text-white">
+            <div class="card-body text-center">
+                <div class="display-6 fw-bold" id="new-users-count">0</div>
+                <p class="mb-0">Новых сегодня</p>
             </div>
         </div>
     </div>
 </div>
 
 <!-- Таблица пользователей -->
-<div class="card">
-    <div class="card-header">
-        <h5 class="mb-0">
-            <i class="fas fa-list me-2"></i>
-            Список пользователей
-        </h5>
-    </div>
-    <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-hover" id="users-table">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>ФИО</th>
-                        <th>Username</th>
-                        <th>Сфера деятельности</th>
-                        <th>Компания</th>
-                        <th>Телефон</th>
-                        <th>Дата регистрации</th>
-                        <th>Подписка</th>
-                        <th>Действия</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td colspan="8" class="text-center text-muted">
-                            <i class="fas fa-spinner fa-spin me-2"></i>
-                            Загрузка данных...
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-list me-2"></i>
+                    Список пользователей
+                </h5>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="text-muted small" id="users-count-info">Загрузка...</span>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0" id="users-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>ФИО</th>
+                                <th>Username</th>
+                                <th>Компания</th>
+                                <th>Телефон</th>
+                                <th>Дата регистрации</th>
+                                <th>Статус подписки</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-table-body">
+                            <tr>
+                                <td colspan="8" class="text-center text-muted py-5">
+                                    <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
+                                    <div>Загрузка пользователей...</div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
-        
-        <!-- Пагинация -->
-        <nav aria-label="Навигация по страницам">
-            <ul class="pagination justify-content-center" id="pagination">
-                <!-- Пагинация будет добавлена через JavaScript -->
-            </ul>
-        </nav>
     </div>
 </div>
 
-<!-- Модальное окно для экспорта -->
-<div class="modal fade" id="exportModal" tabindex="-1">
+<!-- Модальное окно экспорта -->
+<div class="modal fade" id="exportModal" tabindex="-1" aria-labelledby="exportModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="modal-title" id="exportModalLabel">
                     <i class="fas fa-download me-2"></i>
                     Экспорт пользователей
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <div class="mb-3">
-                    <label class="form-label">Формат экспорта:</label>
-                    <div class="form-check">
-                        <input class="form-check-input" type="radio" name="exportFormat" id="formatCsv" value="csv" checked>
-                        <label class="form-check-label" for="formatCsv">
-                            CSV файл
-                        </label>
-                    </div>
-                    <div class="form-check">
-                        <input class="form-check-input" type="radio" name="exportFormat" id="formatExcel" value="excel">
-                        <label class="form-check-label" for="formatExcel">
-                            Excel файл
-                        </label>
-                    </div>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Будет сформирован и скачан файл Excel (.xlsx)
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">Поля для экспорта:</label>
+                    <label class="form-label">Включить поля:</label>
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="exportId" checked>
-                        <label class="form-check-label" for="exportId">ID</label>
+                        <label class="form-check-label" for="exportId">ID пользователя</label>
                     </div>
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="exportName" checked>
-                        <label class="form-check-label" for="exportName">Имя</label>
+                        <label class="form-check-label" for="exportName">ФИО</label>
                     </div>
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="exportUsername" checked>
                         <label class="form-check-label" for="exportUsername">Username</label>
                     </div>
                     <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="exportCompany" checked>
+                        <label class="form-check-label" for="exportCompany">Компания</label>
+                    </div>
+                    <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="exportPhone" checked>
                         <label class="form-check-label" for="exportPhone">Телефон</label>
                     </div>
-                                         <div class="form-check">
-                         <input class="form-check-input" type="checkbox" id="exportCompany" checked>
-                         <label class="form-check-label" for="exportCompany">Компания</label>
-                     </div>
                     <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="exportRegistration" checked>
-                        <label class="form-check-label" for="exportRegistration">Дата регистрации</label>
+                        <input class="form-check-input" type="checkbox" id="exportDate" checked>
+                        <label class="form-check-label" for="exportDate">Дата регистрации</label>
                     </div>
                     <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="exportSubscription" checked>
-                        <label class="form-check-label" for="exportSubscription">Статус подписки</label>
+                        <input class="form-check-input" type="checkbox" id="exportStatus" checked>
+                        <label class="form-check-label" for="exportStatus">Статус подписки</label>
                     </div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>
+                    Отмена
+                </button>
                 <button type="button" class="btn btn-primary" onclick="performExport()">
                     <i class="fas fa-download me-2"></i>
                     Экспортировать
@@ -233,214 +218,313 @@
 
 {% block scripts %}
 <script>
-    let currentPage = 0;
-    let totalPages = 0;
-    let currentSearch = '';
-    let currentStatusFilter = '';
-    let currentSortFilter = '';
+// Глобальные переменные
+window.allUsers = [];
+window.filteredUsers = [];
+
+document.addEventListener('DOMContentLoaded', () => {
+    getUsers();
     
-    // Обновление списка пользователей
-    function refreshUsers() {
-        getUsers(currentSearch, currentPage);
-        showAlert('Список пользователей обновлен', 'success');
-    }
-    
-    // Экспорт пользователей
-    function exportUsers() {
-        const exportModal = new bootstrap.Modal(document.getElementById('exportModal'));
-        exportModal.show();
-    }
-    
-    // Выполнение экспорта
-    function performExport() {
-        const format = document.querySelector('input[name="exportFormat"]:checked').value;
-        const fields = [];
-        
-        // Собираем выбранные поля
-        if (document.getElementById('exportId').checked) fields.push('id');
-        if (document.getElementById('exportName').checked) fields.push('full_name');
-        if (document.getElementById('exportUsername').checked) fields.push('username');
-        if (document.getElementById('exportPhone').checked) fields.push('contact_number');
-        if (document.getElementById('exportCompany').checked) fields.push('company');
-        if (document.getElementById('exportRegistration').checked) fields.push('registration_date');
-        if (document.getElementById('exportSubscription').checked) fields.push('subscription_status');
-        
-        // Создаем данные для экспорта
-        const exportData = [];
-        if (window.allUsers && window.allUsers.length > 0) {
-            window.allUsers.forEach(user => {
-                const row = {};
-                fields.forEach(field => {
-                    if (field === 'registration_date' && user[field]) {
-                        row[field] = new Date(user[field]).toLocaleDateString('ru-RU');
-                    } else {
-                        row[field] = user[field] || '';
-                    }
-                });
-                exportData.push(row);
-            });
-        }
-        
-        if (exportData.length === 0) {
-            showAlert('Нет данных для экспорта', 'warning');
-            return;
-        }
-        
-        // Создаем и скачиваем файл
-        if (format === 'csv') {
-            downloadCSV(exportData, fields);
-        } else if (format === 'excel') {
-            downloadExcel(exportData, fields);
-        }
-        
-        // Закрываем модальное окно
-        const exportModal = bootstrap.Modal.getInstance(document.getElementById('exportModal'));
-        exportModal.hide();
-        
-        showAlert(`Экспортировано ${exportData.length} пользователей в формате ${format.toUpperCase()}`, 'success');
-    }
-    
-    // Функция для скачивания CSV
-    function downloadCSV(data, fields) {
-        const headers = {
-            'id': 'ID',
-            'full_name': 'ФИО',
-            'username': 'Username',
-            'contact_number': 'Телефон',
-            'company': 'Компания',
-            'registration_date': 'Дата регистрации',
-            'subscription_status': 'Статус подписки'
+    // Обработчики событий
+    document.getElementById('searchInput').addEventListener('input', debounce(applyFiltersAndSearch, 300));
+    document.getElementById('statusFilter').addEventListener('change', applyFiltersAndSearch);
+    document.getElementById('sortBy').addEventListener('change', applyFiltersAndSearch);
+});
+
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
         };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+async function getUsers() {
+    try {
+        const response = await fetch('/api/users?skip=0&limit=1000');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
         
-        let csvContent = fields.map(field => headers[field] || field).join(',') + '\n';
+        window.allUsers = data.users || [];
+        window.filteredUsers = [...window.allUsers];
         
-        data.forEach(row => {
-            const values = fields.map(field => {
-                const value = row[field] || '';
-                // Экранируем запятые и кавычки
-                if (value.includes(',') || value.includes('"') || value.includes('\n')) {
-                    return `"${value.replace(/"/g, '""')}"`;
-                }
-                return value;
-            });
-            csvContent += values.join(',') + '\n';
-        });
+        updateUsersTable();
+        updateStats();
         
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
-        link.setAttribute('href', url);
-        link.setAttribute('download', `users_export_${new Date().toISOString().split('T')[0]}.csv`);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+    } catch (error) {
+        console.error('Failed to get users:', error);
+        showAlert(`Ошибка при загрузке пользователей: ${error.message}`, 'danger');
     }
+}
+
+function applyFiltersAndSearch() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const statusFilter = document.getElementById('statusFilter').value;
+    const sortBy = document.getElementById('sortBy').value;
     
-    // Функция для скачивания Excel (простой HTML таблицы)
-    function downloadExcel(data, fields) {
-        const headers = {
-            'id': 'ID',
-            'full_name': 'ФИО',
-            'username': 'Username',
-            'contact_number': 'Телефон',
-            'company': 'Компания',
-            'registration_date': 'Дата регистрации',
-            'subscription_status': 'Статус подписки'
-        };
-        
-        let htmlContent = `
-        <html>
-        <head>
-            <meta charset="utf-8">
-            <title>Экспорт пользователей</title>
-        </head>
-        <body>
-            <table border="1">
-                <thead>
-                    <tr>
-                        ${fields.map(field => `<th>${headers[field] || field}</th>`).join('')}
-                    </tr>
-                </thead>
-                <tbody>
-        `;
-        
-        data.forEach(row => {
-            htmlContent += '<tr>';
-            fields.forEach(field => {
-                htmlContent += `<td>${row[field] || ''}</td>`;
-            });
-            htmlContent += '</tr>';
-        });
-        
-        htmlContent += `
-                </tbody>
-            </table>
-        </body>
-        </html>
-        `;
-        
-        const blob = new Blob([htmlContent], { type: 'application/vnd.ms-excel' });
-        const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
-        link.setAttribute('href', url);
-        link.setAttribute('download', `users_export_${new Date().toISOString().split('T')[0]}.xls`);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    }
-    
-    // Обработчики фильтров
-    document.addEventListener('DOMContentLoaded', function() {
-        const searchInput = document.getElementById('search-input');
-        const statusFilter = document.getElementById('status-filter');
-        const sortFilter = document.getElementById('sort-filter');
-        
+    let filtered = window.allUsers.filter(user => {
         // Поиск
-        let searchTimeout;
-        searchInput.addEventListener('input', function() {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                currentSearch = this.value.trim();
-                currentPage = 0;
-                getUsers(currentSearch, currentPage);
-            }, 500);
-        });
+        const searchMatch = !searchTerm || 
+            (user.full_name && user.full_name.toLowerCase().includes(searchTerm)) ||
+            (user.username && user.username.toLowerCase().includes(searchTerm)) ||
+            (user.company && user.company.toLowerCase().includes(searchTerm)) ||
+            (user.contact_number && user.contact_number.includes(searchTerm));
         
         // Фильтр по статусу
-        statusFilter.addEventListener('change', function() {
-            currentStatusFilter = this.value;
-            currentPage = 0;
-            getUsers(currentSearch, currentPage);
-        });
+        let statusMatch = true;
+        if (statusFilter) {
+            switch (statusFilter) {
+                case 'active':
+                    statusMatch = user.is_active === true;
+                    break;
+                case 'inactive':
+                    statusMatch = user.is_active === false;
+                    break;
+                case 'with_subscription':
+                    statusMatch = user.subscription_status && user.subscription_status !== 'Нет подписки';
+                    break;
+                case 'without_subscription':
+                    statusMatch = !user.subscription_status || user.subscription_status === 'Нет подписки';
+                    break;
+            }
+        }
         
-        // Сортировка
-        sortFilter.addEventListener('change', function() {
-            currentSortFilter = this.value;
-            currentPage = 0;
-            getUsers(currentSearch, currentPage);
-                 });
-     });
-     
-     // Функция для показа уведомлений
-     function showAlert(message, type = 'info') {
-         const alertDiv = document.createElement('div');
-         alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
-         alertDiv.innerHTML = `
-             ${message}
-             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-         `;
-         
-         const container = document.querySelector('.container-fluid');
-         container.insertBefore(alertDiv, container.firstChild);
-         
-         // Автоматически скрываем через 5 секунд
-         setTimeout(() => {
-             if (alertDiv.parentNode) {
-                 alertDiv.remove();
-             }
-         }, 5000);
-     }
- </script>
+        return searchMatch && statusMatch;
+    });
+    
+    // Сортировка
+    filtered.sort((a, b) => {
+        switch (sortBy) {
+            case 'registration_date':
+                return new Date(b.registration_date) - new Date(a.registration_date);
+            case 'full_name':
+                return (a.full_name || '').localeCompare(b.full_name || '');
+            case 'company':
+                return (a.company || '').localeCompare(b.company || '');
+            case 'subscription_status':
+                return (a.subscription_status || '').localeCompare(b.subscription_status || '');
+            default:
+                return 0;
+        }
+    });
+    
+    window.filteredUsers = filtered;
+    updateUsersTable();
+}
+
+function updateUsersTable() {
+    const tbody = document.getElementById('users-table-body');
+    const users = window.filteredUsers;
+    
+    if (users.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" class="text-center text-muted py-5">
+                    <i class="fas fa-search fa-2x mb-3"></i>
+                    <div>Пользователи не найдены</div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = users.map(user => `
+        <tr>
+            <td>
+                <span class="badge bg-secondary">#${user.id}</span>
+            </td>
+            <td>
+                <div class="d-flex align-items-center">
+                    <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                        <i class="fas fa-user text-white"></i>
+                    </div>
+                    <div>
+                        <div class="fw-bold">${user.full_name || 'Не указано'}</div>
+                        <small class="text-muted">${user.telegram_id}</small>
+                    </div>
+                </div>
+            </td>
+            <td>
+                <span class="text-muted">@${user.username || 'Не указан'}</span>
+            </td>
+            <td>
+                <span class="fw-medium">${user.company || 'Не указана'}</span>
+            </td>
+            <td>
+                <span class="text-muted">${user.contact_number || 'Не указан'}</span>
+            </td>
+            <td>
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-calendar-alt text-primary me-2"></i>
+                    <span>${formatDate(user.registration_date)}</span>
+                </div>
+            </td>
+            <td>
+                ${getSubscriptionBadge(user.subscription_status)}
+            </td>
+            <td>
+                <div class="btn-group" role="group">
+                    <a href="/users/${user.id}" class="btn btn-sm btn-outline-primary" title="Детали">
+                        <i class="fas fa-eye"></i>
+                    </a>
+                    <button class="btn btn-sm btn-outline-success" onclick="sendMessage('${user.username}')" title="Отправить сообщение">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+    
+    // Обновляем информацию о количестве
+    document.getElementById('users-count-info').textContent = 
+        `Показано ${users.length} из ${window.allUsers.length} пользователей`;
+}
+
+function updateStats() {
+    const users = window.allUsers;
+    
+    document.getElementById('total-users-count').textContent = users.length;
+    document.getElementById('active-users-count').textContent = users.filter(u => u.is_active === true).length;
+    document.getElementById('users-with-subscription-count').textContent = 
+        users.filter(u => u.subscription_status && u.subscription_status !== 'Нет подписки').length;
+    
+    // Новые пользователи за сегодня
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const newToday = users.filter(u => {
+        const regDate = new Date(u.registration_date);
+        regDate.setHours(0, 0, 0, 0);
+        return regDate.getTime() === today.getTime();
+    }).length;
+    document.getElementById('new-users-count').textContent = newToday;
+}
+
+function getSubscriptionBadge(status) {
+    if (status === 'Активна') {
+        return '<span class="badge bg-success"><i class="fas fa-check me-1"></i>Активна</span>';
+    } else if (status === 'Истекла') {
+        return '<span class="badge bg-warning"><i class="fas fa-clock me-1"></i>Истекла</span>';
+    } else {
+        return '<span class="badge bg-secondary"><i class="fas fa-times me-1"></i>Нет подписки</span>';
+    }
+}
+
+function formatDate(dateString) {
+    if (!dateString) return 'Не указана';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('ru-RU', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+function sendMessage(username) {
+    if (username && username !== 'Не указан') {
+        const cleanUsername = username.replace('@', '');
+        const telegramUrl = `https://t.me/${cleanUsername}`;
+        window.open(telegramUrl, '_blank');
+        showAlert('Открывается чат в Telegram...', 'info');
+    } else {
+        showAlert('Username пользователя не найден', 'warning');
+    }
+}
+
+function performExport() {
+    const users = window.filteredUsers;
+    if (users.length === 0) {
+        showAlert('Нет данных для экспорта', 'warning');
+        return;
+    }
+    
+    // Получаем выбранные поля
+    const fields = {
+        id: document.getElementById('exportId').checked,
+        full_name: document.getElementById('exportName').checked,
+        username: document.getElementById('exportUsername').checked,
+        company: document.getElementById('exportCompany').checked,
+        contact_number: document.getElementById('exportPhone').checked,
+        registration_date: document.getElementById('exportDate').checked,
+        subscription_status: document.getElementById('exportStatus').checked
+    };
+    
+    downloadExcel(users, fields);
+    
+    // Закрываем модальное окно
+    const modal = bootstrap.Modal.getInstance(document.getElementById('exportModal'));
+    modal.hide();
+    
+    showAlert('Экспорт завершен', 'success');
+}
+
+function downloadExcel(users, fields) {
+    // Создаем заголовки
+    const headers = [];
+    if (fields.id) headers.push('ID');
+    if (fields.full_name) headers.push('ФИО');
+    if (fields.username) headers.push('Username');
+    if (fields.company) headers.push('Компания');
+    if (fields.contact_number) headers.push('Телефон');
+    if (fields.registration_date) headers.push('Дата регистрации');
+    if (fields.subscription_status) headers.push('Статус подписки');
+    
+    // Создаем данные
+    const data = users.map(user => {
+        const row = [];
+        if (fields.id) row.push(user.id);
+        if (fields.full_name) row.push(user.full_name || '');
+        if (fields.username) row.push(user.username || '');
+        if (fields.company) row.push(user.company || '');
+        if (fields.contact_number) row.push(user.contact_number || '');
+        if (fields.registration_date) row.push(formatDate(user.registration_date));
+        if (fields.subscription_status) row.push(user.subscription_status || '');
+        return row;
+    });
+    
+    // Создаем CSV
+    const csvContent = [headers.join(','), ...data.map(row => row.join(','))].join('\n');
+    
+    // Создаем и скачиваем файл
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `users_export_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+function refreshUsers() {
+    getUsers();
+    showAlert('Список пользователей обновлен', 'success');
+}
+
+function showAlert(message, type = 'info') {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    const container = document.querySelector('.main-content');
+    container.insertBefore(alertDiv, container.firstChild);
+    
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+</script>
 {% endblock %} 

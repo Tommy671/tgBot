@@ -36,6 +36,7 @@ class UserExport(UserBase):
     id: int
     registration_date: datetime
     subscription_status: str
+    is_active: bool  # Добавляем поле активности пользователя
 
     class Config:
         from_attributes = True

@@ -102,7 +102,7 @@ function updateDashboardUI(stats) {
     
     if (totalUsersEl) totalUsersEl.textContent = stats.total_users || 0;
     if (activeSubscriptionsEl) activeSubscriptionsEl.textContent = stats.active_subscriptions || 0;
-    if (newUsersTodayEl) newUsersTodayEl.textContent = stats.new_users_week || 0; // API возвращает new_users_week
+    if (newUsersTodayEl) newUsersTodayEl.textContent = stats.new_users_today || 0; // API возвращает new_users_today
     if (expiringSubscriptionsEl) expiringSubscriptionsEl.textContent = stats.expiring_subscriptions || 0;
     
     console.log('Dashboard stats updated:', stats);
@@ -119,10 +119,13 @@ function updateUsersStats(usersData) {
     const newUsersCountEl = document.getElementById('new-users-count');
     
     if (totalUsersCountEl) totalUsersCountEl.textContent = usersData.total || 0;
-    if (activeUsersCountEl) activeUsersCountEl.textContent = usersData.total || 0; // Все пользователи активны по умолчанию
+    
+    // Подсчитываем активных пользователей по полю is_active
+    const users = usersData.users || [];
+    const activeCount = users.filter(user => user.is_active === true).length;
+    if (activeUsersCountEl) activeUsersCountEl.textContent = activeCount;
     
     // Подсчитываем пользователей с подпиской
-    const users = usersData.users || [];
     const subscribedCount = users.filter(user => 
         user.subscription_status && user.subscription_status !== 'Нет подписки'
     ).length;
@@ -196,7 +199,6 @@ function updateRecentUsersTable(usersData) {
             <td>${user.id}</td>
             <td>${user.full_name || 'Не указано'}</td>
             <td>@${user.username || 'Нет'}</td>
-            <td>${user.company || 'Не указано'}</td>
             <td>${user.registration_date ? new Date(user.registration_date).toLocaleDateString('ru-RU') : 'Не указано'}</td>
             <td>
                 <span class="badge ${user.subscription_status && user.subscription_status !== 'Нет подписки' ? 'bg-success' : 'bg-secondary'}">
@@ -259,10 +261,10 @@ function applyFiltersAndSearch() {
     if (statusFilter) {
         switch (statusFilter) {
             case 'active':
-                filtered = filtered.filter(user => user.subscription_status && user.subscription_status !== 'Нет подписки');
+                filtered = filtered.filter(user => user.is_active === true);
                 break;
             case 'inactive':
-                filtered = filtered.filter(user => !user.subscription_status || user.subscription_status === 'Нет подписки');
+                filtered = filtered.filter(user => user.is_active === false);
                 break;
             case 'with_subscription':
                 filtered = filtered.filter(user => user.subscription_status && user.subscription_status !== 'Нет подписки');
@@ -305,9 +307,8 @@ function refreshUsers() {
     showAlert('Список пользователей обновлен', 'success');
 }
 
-// Выполнение экспорта
+// Выполнение экспорта (только Excel)
 function performExport() {
-    const format = document.querySelector('input[name="exportFormat"]:checked').value;
     const fields = [];
     
     // Собираем выбранные поля
@@ -331,55 +332,17 @@ function performExport() {
         return;
     }
     
-    // Экспортируем данные
-    if (format === 'csv') {
-        exportToCSV(exportData, fields);
-    } else if (format === 'excel') {
-        exportToExcel(exportData, fields);
-    }
+    // Экспортируем данные только в Excel
+    exportToExcel(exportData, fields);
     
     // Закрываем модальное окно
     const exportModal = bootstrap.Modal.getInstance(document.getElementById('exportModal'));
     exportModal.hide();
     
-    showAlert(`Экспортировано ${exportData.length} пользователей в формате ${format.toUpperCase()}`, 'success');
+    showAlert(`Экспортировано ${exportData.length} пользователей (Excel)`, 'success');
 }
 
-// Экспорт в CSV
-function exportToCSV(data, fields) {
-    const headers = fields.map(field => {
-        const fieldNames = {
-            'id': 'ID',
-            'full_name': 'ФИО',
-            'username': 'Username',
-            'contact_number': 'Телефон',
-            'company': 'Компания',
-            'registration_date': 'Дата регистрации',
-            'subscription_status': 'Статус подписки'
-        };
-        return fieldNames[field] || field;
-    });
-    
-    const csvContent = [
-        headers.join(','),
-        ...data.map(user => 
-            fields.map(field => {
-                let value = user[field] || '';
-                if (field === 'registration_date' && value) {
-                    value = new Date(value).toLocaleDateString('ru-RU');
-                }
-                // Преобразуем в строку и экранируем запятые и кавычки
-                value = String(value);
-                if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
-                    value = `"${value.replace(/"/g, '""')}"`;
-                }
-                return value;
-            }).join(',')
-        )
-    ].join('\n');
-    
-    downloadFile(csvContent, 'users.csv', 'text/csv');
-}
+// Удален экспорт в CSV
 
 // Экспорт в Excel (простой формат)
 function exportToExcel(data, fields) {
@@ -473,7 +436,7 @@ function updateUsersTable(usersData) {
             <td>${user.id}</td>
             <td>${user.full_name || 'Не указано'}</td>
             <td>@${user.username || 'Нет'}</td>
-            <td>${user.activity_field || 'Не указано'}</td>
+            
             <td>${user.company || 'Не указано'}</td>
             <td>${user.contact_number || 'Нет'}</td>
             <td>${user.registration_date ? new Date(user.registration_date).toLocaleDateString('ru-RU') : 'Не указано'}</td>
@@ -742,9 +705,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (sortFilter) {
         sortFilter.addEventListener('change', function() {
-            if (path === '/users') {
+                if (path === '/users') {
                 applyFiltersAndSearch();
-            }
+                }
         });
     }
 }); 

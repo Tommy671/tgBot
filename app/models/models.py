@@ -92,3 +92,14 @@ class AdminUser(Base):
     def get_password_hash(password: str) -> str:
         """Хеширование пароля"""
         return pwd_context.hash(password)
+
+
+class BotSettings(Base):
+    """Модель настроек бота"""
+    __tablename__ = "bot_settings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    key = Column(String, unique=True, index=True)  # Ключ настройки
+    value = Column(String)  # Значение настройки
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_by = Column(String, nullable=True)  # Кто обновил настройку

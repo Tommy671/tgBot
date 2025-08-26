@@ -1,331 +1,161 @@
 {% extends "base.html" %}
 
-{% block title %}Подписки - CRM Админка{% endblock %}
+{% block title %}Управление подписками - CRM Админка{% endblock %}
 
-{% set timedelta = timedelta %}
-{% block page_title %}Управление подписками{% endblock %}
+{% block page_title %}
+    <i class="fas fa-credit-card me-3 text-primary"></i>
+    Управление подписками
+{% endblock %}
 
 {% block page_actions %}
-<div class="d-flex">
-    <button class="btn btn-success me-2" onclick="createSubscription()">
-        <i class="fas fa-plus me-2"></i>Создать подписку
-    </button>
     <button class="btn btn-primary" onclick="refreshSubscriptions()">
-        <i class="fas fa-sync-alt me-2"></i>Обновить
+        <i class="fas fa-sync-alt me-2"></i>
+        Обновить
     </button>
-</div>
 {% endblock %}
 
 {% block content %}
-<!-- Фильтры -->
-<div class="card mb-4">
-    <div class="card-body">
-        <form method="GET" class="row g-3">
-            <div class="col-md-4">
-                <select class="form-select" name="status">
-                    <option value="all" {% if status == 'all' %}selected{% endif %}>Все подписки</option>
-                    <option value="active" {% if status == 'active' %}selected{% endif %}>Активные</option>
-                    <option value="expired" {% if status == 'expired' %}selected{% endif %}>Истекшие</option>
-                </select>
+<div class="row">
+    <!-- Количество пользователей с подпиской -->
+    <div class="col-lg-6 mb-4">
+        <div class="stats-card h-100">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="display-4 fw-bold" id="users-with-subscription">0</div>
+                    <p class="text-muted mb-0">
+                        <i class="fas fa-users me-2"></i>
+                        Пользователей с подпиской
+                    </p>
+                </div>
+                <div class="text-end">
+                    <i class="fas fa-users fa-2x text-white-50"></i>
+                </div>
             </div>
-            <div class="col-md-4">
-                <input type="text" class="form-control" name="search" 
-                       value="{{ request.args.get('search', '') }}" 
-                       placeholder="Поиск по имени пользователя...">
-            </div>
-            <div class="col-md-4">
-                <button type="submit" class="btn btn-primary w-100">
-                    <i class="fas fa-filter me-2"></i>Применить фильтры
-                </button>
-            </div>
-        </form>
+        </div>
     </div>
-</div>
 
-<!-- Статистика подписок -->
-<div class="row mb-4">
-    <div class="col-md-3">
-        <div class="card stats-card text-white">
+    <!-- Настройки подписки -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-cog me-2"></i>
+                    Настройки подписки
+                </h5>
+            </div>
             <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <div>
-                        <h6 class="card-title">Всего подписок</h6>
-                        <h3 class="mb-0">{{ subscriptions.total }}</h3>
-                    </div>
-                    <div class="align-self-center">
-                        <i class="fas fa-credit-card fa-2x"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card stats-card text-white">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <div>
-                        <h6 class="card-title">Активные</h6>
-                        <h3 class="mb-0">{{ subscriptions.items|selectattr('is_active')|list|length }}</h3>
-                    </div>
-                    <div class="align-self-center">
-                        <i class="fas fa-check-circle fa-2x"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-                        <div class="col-md-3">
-                        <div class="card stats-card text-white">
-                            <div class="card-body">
-                                <div class="d-flex justify-content-between">
-                                    <div>
-                                        <h6 class="card-title">Истекают через неделю</h6>
-                                        <h3 class="mb-0">
-                                            {% set expiring_soon = subscriptions.items|selectattr('is_active')|selectattr('end_date', '<=', now + timedelta(days=7))|list %}
-                                            {{ expiring_soon|length }}
-                                        </h3>
-                                    </div>
-                                    <div class="align-self-center">
-                                        <i class="fas fa-clock fa-2x"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card stats-card text-white">
-                            <div class="card-body">
-                                <div class="d-flex justify-content-between">
-                                    <div>
-                                        <h6 class="card-title">Автопродление</h6>
-                                        <h3 class="mb-0">{{ subscriptions.items|selectattr('auto_renewal')|list|length }}</h3>
-                                    </div>
-                                    <div class="align-self-center">
-                                        <i class="fas fa-sync-alt fa-2x"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-</div>
-
-<!-- Список подписок -->
-<div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h6 class="m-0 font-weight-bold">
-            <i class="fas fa-credit-card me-2"></i>Список подписок
-        </h6>
-        <span class="badge bg-primary fs-6">{{ subscriptions.total }} подписок</span>
-    </div>
-    <div class="card-body">
-        {% if subscriptions.items %}
-        <div class="table-responsive">
-            <table class="table table-hover">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Пользователь</th>
-                        <th>Статус</th>
-                        <th>Дата начала</th>
-                        <th>Дата окончания</th>
-                        <th>Стоимость</th>
-                        <th>Автопродление</th>
-                        <th>Действия</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for subscription in subscriptions.items %}
-                    <tr>
-                        <td>
-                            <span class="badge bg-secondary">{{ subscription.id }}</span>
-                        </td>
-                        <td>
-                            <div class="d-flex align-items-center">
-                                <div class="avatar-sm bg-primary rounded-circle d-flex align-items-center justify-content-center me-2">
-                                    <span class="text-white fw-bold">{{ subscription.user.full_name[0] }}</span>
-                                </div>
-                                <div>
-                                    <div class="fw-bold">{{ subscription.user.full_name }}</div>
-                                    <small class="text-muted">@{{ subscription.user.telegram_username }}</small>
-                                </div>
-                            </div>
-                        </td>
-                        <td>
-                            {% if subscription.is_active() %}
-                                <span class="badge bg-success">
-                                    <i class="fas fa-check me-1"></i>Активна
-                                </span>
-                            {% else %}
-                                <span class="badge bg-secondary">
-                                    <i class="fas fa-times me-1"></i>Истекла
-                                </span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <div>{{ subscription.start_date.strftime('%d.%m.%Y') }}</div>
-                            <small class="text-muted">{{ subscription.start_date.strftime('%H:%M') }}</small>
-                        </td>
-                        <td>
-                            <div>{{ subscription.end_date.strftime('%d.%m.%Y') }}</div>
-                            <small class="text-muted">{{ subscription.end_date.strftime('%H:%M') }}</small>
-                        </td>
-                        <td>
-                            <span class="fw-bold">{{ subscription.payment_amount }} ₽</span>
-                        </td>
-                        <td>
-                            {% if subscription.auto_renewal %}
-                                <span class="badge bg-success">Включено</span>
-                            {% else %}
-                                <span class="badge bg-secondary">Отключено</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <div class="btn-group" role="group">
-                                <button type="button" class="btn btn-sm btn-outline-success" 
-                                        onclick="extendSubscription({{ subscription.id }})" title="Продлить">
-                                    <i class="fas fa-plus"></i>
-                                </button>
-                                <button type="button" class="btn btn-sm btn-outline-warning" 
-                                        onclick="toggleAutoRenewal({{ subscription.id }})" title="Автопродление">
-                                    <i class="fas fa-sync-alt"></i>
-                                </button>
-                                <button type="button" class="btn btn-sm btn-outline-danger" 
-                                        onclick="cancelSubscription({{ subscription.id }})" title="Отменить">
-                                    <i class="fas fa-times"></i>
-                                </button>
-                                <a href="{{ url_for('user_detail', user_id=subscription.user.id) }}" 
-                                   class="btn btn-sm btn-outline-primary" title="Профиль пользователя">
-                                    <i class="fas fa-user"></i>
-                                </a>
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Пагинация -->
-        {% if subscriptions.pages > 1 %}
-        <nav aria-label="Навигация по страницам">
-            <ul class="pagination justify-content-center">
-                {% if subscriptions.has_prev %}
-                <li class="page-item">
-                    <a class="page-link" href="{{ url_for('subscriptions', page=subscriptions.prev_num, status=status) }}">
-                        <i class="fas fa-chevron-left"></i>
-                    </a>
-                </li>
-                {% endif %}
-                
-                {% for page_num in subscriptions.iter_pages() %}
-                    {% if page_num %}
-                        {% if page_num != subscriptions.page %}
-                        <li class="page-item">
-                            <a class="page-link" href="{{ url_for('subscriptions', page=page_num, status=status) }}">{{ page_num }}</a>
-                        </li>
-                        {% else %}
-                        <li class="page-item active">
-                            <span class="page-link">{{ page_num }}</span>
-                        </li>
-                        {% endif %}
-                    {% else %}
-                        <li class="page-item disabled">
-                            <span class="page-link">...</span>
-                        </li>
-                    {% endif %}
-                {% endfor %}
-                
-                {% if subscriptions.has_next %}
-                <li class="page-item">
-                    <a class="page-link" href="{{ url_for('subscriptions', page=subscriptions.next_num, status=status) }}">
-                        <i class="fas fa-chevron-right"></i>
-                    </a>
-                </li>
-                {% endif %}
-            </ul>
-        </nav>
-        {% endif %}
-        
-        {% else %}
-        <div class="text-center py-5">
-            <i class="fas fa-credit-card fa-4x text-muted mb-3"></i>
-            <h5 class="text-muted">Подписки не найдены</h5>
-            <p class="text-muted">
-                {% if status != 'all' %}
-                    По выбранным фильтрам подписки не найдены.
-                {% else %}
-                    В системе пока нет подписок.
-                {% endif %}
-            </p>
-        </div>
-        {% endif %}
-    </div>
-</div>
-
-<!-- Модальное окно создания подписки -->
-<div class="modal fade" id="createSubscriptionModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Создание новой подписки</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="mb-3">
-                    <label for="userId" class="form-label">Пользователь</label>
-                    <select class="form-select" id="userId" required>
-                        <option value="">Выберите пользователя</option>
-                        <!-- Опции будут загружены через AJAX -->
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label for="subscriptionDays" class="form-label">Срок действия (дней)</label>
-                    <input type="number" class="form-control" id="subscriptionDays" value="30" min="1" max="365" required>
-                </div>
-                <div class="mb-3">
-                    <label for="subscriptionAmount" class="form-label">Стоимость (₽)</label>
-                    <input type="number" class="form-control" id="subscriptionAmount" value="1000" min="0" step="0.01" required>
-                </div>
-                <div class="mb-3">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="autoRenewal" checked>
-                        <label class="form-check-label" for="autoRenewal">
-                            Включить автопродление
+                <form id="subscription-settings-form">
+                    <div class="mb-4">
+                        <label for="subscription-price" class="form-label">
+                            <i class="fas fa-ruble-sign me-2"></i>
+                            Цена подписки
                         </label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="subscription-price" 
+                                   placeholder="Введите цену" min="0" step="1" required>
+                            <span class="input-group-text">₽/месяц</span>
+                        </div>
+                        <div class="form-text">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Текущая цена подписки, отображаемая пользователям в боте
+                        </div>
                     </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                <button type="button" class="btn btn-success" onclick="confirmCreateSubscription()">
-                    <i class="fas fa-plus me-2"></i>Создать
-                </button>
+                    
+                    <div class="mb-4">
+                        <label for="private-chat-link" class="form-label">
+                            <i class="fas fa-link me-2"></i>
+                            Ссылка на приватный чат
+                        </label>
+                        <input type="url" class="form-control" id="private-chat-link" 
+                               placeholder="https://t.me/your_chat_link" required>
+                        <div class="form-text">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Ссылка на приватный чат для подписчиков
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="payment-link" class="form-label">
+                            <i class="fas fa-credit-card me-2"></i>
+                            Ссылка на оплату
+                        </label>
+                        <input type="url" class="form-control" id="payment-link" 
+                               placeholder="https://payment.example.com" required>
+                        <div class="form-text">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Ссылка для оплаты подписки
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-save me-2"></i>
+                        Сохранить настройки
+                    </button>
+                </form>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Модальное окно продления подписки -->
-<div class="modal fade" id="extendSubscriptionModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Продление подписки</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+<!-- Информационная панель -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Информация о настройках
+                </h5>
             </div>
-            <div class="modal-body">
-                <div id="extendSubscriptionInfo"></div>
-                <hr>
-                <div class="mb-3">
-                    <label for="extendDays" class="form-label">Продлить на (дней):</label>
-                    <input type="number" class="form-control" id="extendDays" value="30" min="1" max="365">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <div class="d-flex align-items-center p-3 bg-light rounded">
+                            <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 50px; height: 50px;">
+                                <i class="fas fa-ruble-sign fa-lg text-white"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-1">Цена подписки</h6>
+                                <p class="mb-0 text-muted" id="current-price">Загрузка...</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="d-flex align-items-center p-3 bg-light rounded">
+                            <div class="bg-success rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 50px; height: 50px;">
+                                <i class="fas fa-link fa-lg text-white"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-1">Приватный чат</h6>
+                                <p class="mb-0 text-muted" id="current-chat-link">Загрузка...</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="d-flex align-items-center p-3 bg-light rounded">
+                            <div class="bg-warning rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 50px; height: 50px;">
+                                <i class="fas fa-credit-card fa-lg text-white"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-1">Оплата</h6>
+                                <p class="mb-0 text-muted" id="current-payment-link">Загрузка...</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                <button type="button" class="btn btn-success" onclick="confirmExtendSubscription()">
-                    <i class="fas fa-plus me-2"></i>Продлить
-                </button>
+                
+                <div class="alert alert-info mt-3">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-lightbulb fa-2x me-3 text-info"></i>
+                        <div>
+                            <h6 class="mb-1">Как это работает</h6>
+                            <p class="mb-0">
+                                Изменения в настройках автоматически применяются в боте. 
+                                Пользователи увидят обновленную цену и ссылки при следующем взаимодействии с ботом.
+                            </p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -334,154 +164,120 @@
 
 {% block scripts %}
 <script>
-let currentSubscriptionId = null;
+document.addEventListener('DOMContentLoaded', () => {
+    loadSubscriptionData();
+    loadSubscriptionSettings();
+});
 
 function refreshSubscriptions() {
-    location.reload();
+    loadSubscriptionData();
+    loadSubscriptionSettings();
+    showAlert('Данные подписок обновлены', 'success');
 }
 
-function createSubscription() {
-    // Загружаем список пользователей без подписок
-    fetch('/api/users')
-    .then(response => response.json())
-    .then(users => {
-        const select = document.getElementById('userId');
-        select.innerHTML = '<option value="">Выберите пользователя</option>';
+async function loadSubscriptionData() {
+    try {
+        const response = await fetch('/api/subscriptions/stats');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
         
-        users.forEach(user => {
-            if (!user.has_subscription) {
-                const option = document.createElement('option');
-                option.value = user.id;
-                option.textContent = `${user.full_name} (@${user.telegram_username})`;
-                select.appendChild(option);
-            }
-        });
+        // Обновляем количество пользователей с подпиской
+        document.getElementById('users-with-subscription').textContent = data.users_with_subscription || 0;
         
-        const modal = new bootstrap.Modal(document.getElementById('createSubscriptionModal'));
-        modal.show();
-    });
+    } catch (error) {
+        console.error('Ошибка при загрузке данных подписок:', error);
+        showAlert(`Ошибка при загрузке данных подписок: ${error.message}`, 'danger');
+    }
 }
 
-function confirmCreateSubscription() {
-    const userId = document.getElementById('userId').value;
-    const days = document.getElementById('subscriptionDays').value;
-    const amount = document.getElementById('subscriptionAmount').value;
-    const autoRenewal = document.getElementById('autoRenewal').checked;
+async function loadSubscriptionSettings() {
+    try {
+        const response = await fetch('/api/subscriptions/settings');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        
+        // Заполняем форму
+        document.getElementById('subscription-price').value = data.subscription_price || 999;
+        document.getElementById('private-chat-link').value = data.private_chat_link || '';
+        document.getElementById('payment-link').value = data.payment_link || '';
+        
+        // Обновляем информационную панель
+        document.getElementById('current-price').textContent = `${data.subscription_price || 999} ₽/месяц`;
+        document.getElementById('current-chat-link').textContent = data.private_chat_link || 'Не указана';
+        document.getElementById('current-payment-link').textContent = data.payment_link || 'Не указана';
+        
+    } catch (error) {
+        console.error('Ошибка при загрузке настроек подписки:', error);
+        showAlert(`Ошибка при загрузке настроек подписки: ${error.message}`, 'danger');
+    }
+}
+
+// Обработка отправки формы настроек
+document.getElementById('subscription-settings-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
     
-    if (!userId || !days || !amount) {
-        alert('Пожалуйста, заполните все поля');
+    const formData = {
+        subscription_price: parseFloat(document.getElementById('subscription-price').value),
+        private_chat_link: document.getElementById('private-chat-link').value,
+        payment_link: document.getElementById('payment-link').value
+    };
+    
+    // Валидация
+    if (formData.subscription_price < 0) {
+        showAlert('Цена подписки не может быть отрицательной', 'danger');
         return;
     }
     
-    fetch(`/api/user/${userId}/subscription`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            action: 'create',
-            days: parseInt(days),
-            amount: parseFloat(amount),
-            auto_renewal: autoRenewal
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert(data.message);
-            location.reload();
-        } else {
-            alert('Ошибка: ' + data.message);
-        }
-    });
-}
-
-function extendSubscription(subscriptionId) {
-    currentSubscriptionId = subscriptionId;
+    if (!formData.private_chat_link || !formData.payment_link) {
+        showAlert('Пожалуйста, заполните все поля', 'warning');
+        return;
+    }
     
-    // Загружаем информацию о подписке
-    fetch(`/api/subscription/${subscriptionId}`)
-    .then(response => response.json())
-    .then(data => {
-        document.getElementById('extendSubscriptionInfo').innerHTML = `
-            <div class="alert alert-info">
-                <strong>Пользователь:</strong> ${data.user_name}<br>
-                <strong>Текущий статус:</strong> ${data.status}<br>
-                <strong>Действует до:</strong> ${data.end_date}
-            </div>
-        `;
+    try {
+        const response = await fetch('/api/subscriptions/settings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+        });
         
-        const modal = new bootstrap.Modal(document.getElementById('extendSubscriptionModal'));
-        modal.show();
-    });
-}
-
-function confirmExtendSubscription() {
-    const days = document.getElementById('extendDays').value;
-    
-    fetch(`/api/subscription/${currentSubscriptionId}/extend`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            days: parseInt(days)
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert(data.message);
-            location.reload();
+        const result = await response.json();
+        
+        if (response.ok) {
+            showAlert(result.message, 'success');
+            loadSubscriptionSettings(); // Перезагружаем настройки
         } else {
-            alert('Ошибка: ' + data.message);
+            showAlert(result.detail || 'Ошибка при сохранении настроек', 'danger');
         }
-    });
-}
-
-function toggleAutoRenewal(subscriptionId) {
-    if (confirm('Изменить статус автопродления?')) {
-        fetch(`/api/subscription/${subscriptionId}/toggle_auto_renewal`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(data.message);
-                location.reload();
-            } else {
-                alert('Ошибка: ' + data.message);
-            }
-        });
+    } catch (error) {
+        console.error('Ошибка при отправке настроек:', error);
+        showAlert(`Ошибка при отправке настроек: ${error.message}`, 'danger');
     }
-}
+});
 
-function cancelSubscription(subscriptionId) {
-    if (confirm('Вы уверены, что хотите отменить подписку?')) {
-        fetch(`/api/subscription/${subscriptionId}/cancel`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(data.message);
-                location.reload();
-            } else {
-                alert('Ошибка: ' + data.message);
-            }
-        });
-    }
+// Функция для показа уведомлений
+function showAlert(message, type = 'info') {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    const container = document.querySelector('.main-content');
+    container.insertBefore(alertDiv, container.firstChild);
+    
+    // Автоматически скрываем через 5 секунд
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
 }
-
-// Автообновление каждые 60 секунд
-setInterval(function() {
-    // Можно добавить AJAX запрос для обновления только данных
-}, 60000);
 </script>
 {% endblock %} 

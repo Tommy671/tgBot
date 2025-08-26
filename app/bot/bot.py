@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import get_db_session
 from app.core.utils import cache_result, rate_limit, retry_on_failure, measure_performance
-from app.models.models import User, Subscription
+from app.models.models import User, Subscription, BotSettings
 
 # Настройка логирования
 logging.basicConfig(
@@ -31,6 +31,16 @@ logger = logging.getLogger(__name__)
 
 # Структура для хранения временных данных пользователей
 user_data_temp = {}
+
+def get_bot_setting(key: str, default: str = "") -> str:
+    """Получение настройки бота из БД"""
+    try:
+        with get_db_session() as db:
+            setting = db.query(BotSettings).filter(BotSettings.key == key).first()
+            return setting.value if setting else default
+    except Exception as e:
+        logger.error(f"Error getting bot setting {key}: {e}")
+        return default
 
 
 class TelegramBot:
@@ -151,7 +161,7 @@ class TelegramBot:
         }
         
         questions = [
-            "Введите ваше ФИО (фамилия и имя через пробел):",
+            "Введите фамилию и имя (через пробел):",
             "Введите сферу деятельности:",
             "Введите название компании:",
             "Введите вашу роль в компании:",
@@ -180,7 +190,7 @@ class TelegramBot:
         fields = ['full_name', 'activity_field', 'company', 'role_in_company', 'contact_number', 'participation_purpose']
         value = update.message.text
         
-        # Валидация ФИО
+        # Валидация фамилии и имени
         if fields[step] == 'full_name':
             if len(value.split()) < 2:
                 await update.message.reply_text("Пожалуйста, введите фамилию и имя через пробел (например: Иванов Иван)")
@@ -197,6 +207,7 @@ class TelegramBot:
         user_data['step'] += 1
         
         questions = [
+            "Введите фамилию и имя (через пробел):",
             "Введите сферу деятельности:",
             "Введите название компании:",
             "Введите вашу роль в компании:",
@@ -347,7 +358,7 @@ class TelegramBot:
                     # У пользователя есть активная подписка
                     await query.edit_message_text(
                         f"✅ У вас есть активная подписка!\n\n"
-                        f"🔗 Ссылка на приватный чат: {settings.PRIVATE_CHAT_LINK}\n\n"
+                        f"🔗 Ссылка на приватный чат: {get_bot_setting('private_chat_link', 'https://t.me/private_chat_link')}\n\n"
                         f"Используйте эту ссылку для входа в закрытый чат.",
                         reply_markup=InlineKeyboardMarkup([[
                             InlineKeyboardButton("🏠 Вернуться в главное меню", callback_data="main_back")
@@ -403,7 +414,7 @@ class TelegramBot:
             }
             
             await query.edit_message_text(
-                "📝 Заполнение анкеты заново\n\nВведите ваше ФИО (фамилия и имя через пробел):"
+                "📝 Заполнение анкеты заново\n\nВведите фамилию и имя (через пробел):"
             )
             return FILLING_QUESTIONNAIRE
         
@@ -435,7 +446,7 @@ class TelegramBot:
                         f"💳 Управление подпиской\n\n"
                         f"✅ У вас активная подписка\n"
                         f"📅 Действует до: {end_date}\n"
-                        f"💰 Стоимость: {settings.SUBSCRIPTION_PRICE} ₽/месяц\n\n"
+                        f"💰 Стоимость: {get_bot_setting('subscription_price', '999')} ₽/месяц\n\n"
                         f"Выберите действие:",
                         reply_markup=InlineKeyboardMarkup(keyboard)
                     )
@@ -448,7 +459,7 @@ class TelegramBot:
                     
                     await query.edit_message_text(
                         f"💳 Оформление подписки\n\n"
-                        f"💰 Стоимость: {settings.SUBSCRIPTION_PRICE} ₽/месяц\n"
+                        f"💰 Стоимость: {get_bot_setting('subscription_price', '999')} ₽/месяц\n"
                         f"📅 Срок действия: {settings.SUBSCRIPTION_DURATION_DAYS} дней\n\n"
                         f"Выберите действие:",
                         reply_markup=InlineKeyboardMarkup(keyboard)
@@ -472,7 +483,7 @@ class TelegramBot:
             # Здесь должна быть интеграция с платежной системой
             await query.edit_message_text(
                 "💳 Оформление подписки\n\n"
-                "🔗 Ссылка для оплаты: https://example.com/payment\n\n"
+                f"🔗 Ссылка для оплаты: {get_bot_setting('payment_link', 'https://payment.example.com')}\n\n"
                 "После успешной оплаты ваша подписка будет активирована автоматически.",
                 reply_markup=InlineKeyboardMarkup([[
                     InlineKeyboardButton("🏠 Вернуться в главное меню", callback_data="main_back")
@@ -554,7 +565,7 @@ class TelegramBot:
                 
                 # Формируем информацию о профиле
                 profile_text = f"👤 Профиль пользователя\n\n"
-                profile_text += f"📝 ФИО: {db_user.full_name or 'Не указано'}\n"
+                profile_text += f"📝 Фамилия и имя: {db_user.full_name or 'Не указано'}\n"
                 profile_text += f"🏢 Сфера деятельности: {db_user.activity_field or 'Не указано'}\n"
                 profile_text += f"🏭 Компания: {db_user.company or 'Не указано'}\n"
                 profile_text += f"👔 Роль в компании: {db_user.role_in_company or 'Не указано'}\n"
@@ -605,7 +616,7 @@ class TelegramBot:
         }
         
         await query.edit_message_text(
-            "📝 Обновление данных профиля\n\nВведите ваше ФИО (фамилия и имя через пробел):"
+            "📝 Обновление данных профиля\n\nВведите фамилию и имя (через пробел):"
         )
         return FILLING_QUESTIONNAIRE
     

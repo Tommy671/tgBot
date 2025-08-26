@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     
     # Bot Configuration
     PRIVATE_CHAT_LINK: str = "https://t.me/private_chat_link"
+    PAYMENT_LINK: str = "https://payment.example.com"
     SUBSCRIPTION_PRICE: int = 999
     SUBSCRIPTION_DURATION_DAYS: int = 30
     
@@ -84,5 +85,6 @@ class Config:
     ALGORITHM = settings.ALGORITHM
     ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
     PRIVATE_CHAT_LINK = settings.PRIVATE_CHAT_LINK
+    PAYMENT_LINK = settings.PAYMENT_LINK
     SUBSCRIPTION_PRICE = settings.SUBSCRIPTION_PRICE
     SUBSCRIPTION_DURATION_DAYS = settings.SUBSCRIPTION_DURATION_DAYS
