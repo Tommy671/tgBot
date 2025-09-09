@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Оплата не завершена{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="alert alert-warning">{{ message }}</div>
+  {% if deep_link %}
+  <a class="btn btn-primary" href="{{ deep_link }}">Вернуться в бота</a>
+  {% endif %}
+  <a class="btn btn-outline-secondary" href="/">На главную</a>
+</div>
+{% endblock %}
+
+

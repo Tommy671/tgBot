@@ -1,0 +1,44 @@
+# Telegram Bot Configuration
+TELEGRAM_TOKEN=8301019500:AAHrP6XBi9l5cCRuQxCmRA3Ny-kFDhxO_NI
+FREE_CHANNEL_ID=-1002776416062
+PAID_CHANNEL_ID=-1002765866900
+
+# Database Configuration
+DATABASE_URL=sqlite:///./data/bot_database.db
+
+# FastAPI Configuration
+HOST=0.0.0.0
+PORT=8001
+
+# Security Configuration
+SECRET_KEY=your_secret_key_here_should_be_at_least_32_characters_long
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+# Bot Settings
+BOT_USERNAME=ValeraMikaTestBot
+PUBLIC_BASE_URL=http://81.177.135.121:8001
+PRIVATE_CHAT_LINK=https://t.me/+PDZ4TebmVys2M2Uy
+PRIVACY_POLICY_URL=http://project13655227.tilda.ws/privacy
+SUBSCRIPTION_PRICE=1000
+SUBSCRIPTION_DURATION_DAYS=30
+ROBOKASSA_ENCODED_INVOICE_ID=pfV41IHNOEeWk9illbWUNQ
+
+# ========================================
+# ВАЖНЫЕ ССЫЛКИ И НАСТРОЙКИ
+# ========================================
+
+# Ссылки для Robokassa (настроить в админке Robokassa):
+# Success URL: http://81.177.135.121:8001/robokassa/success
+# Fail URL: http://81.177.135.121:8001/robokassa/fail
+
+# Каналы:
+# Бесплатный канал: @testpaid020925 (ID: -1002776416062)
+# Платный канал: https://t.me/+PDZ4TebmVys2M2Uy (ID: -1002765866900)
+
+# Бот: @ValeraMikaTestBot
+# Админка: http://81.177.135.121:8001
+# Страница оплаты: http://81.177.135.121:8001/pay?user_id=USER_ID
+
+# Скрипт Robokassa:
+# <script type="text/javascript" src="https://auth.robokassa.ru/Merchant/PaymentForm/FormSS.js?EncodedInvoiceId=pfV41IHNOEeWk9illbWUNQ"></script>

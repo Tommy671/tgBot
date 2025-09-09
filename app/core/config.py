@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     
     # Telegram Bot
     TELEGRAM_TOKEN: str
+    BOT_USERNAME: str = ""  # username бота без @, используется для deep-link
     
     # Database
     DATABASE_URL: str = "sqlite:///./bot_database.db"
@@ -19,6 +20,7 @@ class Settings(BaseSettings):
     # FastAPI
     HOST: str = "0.0.0.0"
     PORT: int = 8001
+    PUBLIC_BASE_URL: str = "http://localhost:8001"  # Публичный адрес админки/сервера для редиректов
     
     # Security
     SECRET_KEY: str
@@ -26,10 +28,14 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     
     # Bot Configuration
+    FREE_CHANNEL_ID: str = "@testpaid020925"  # Бесплатный канал для регистрации
+    PAID_CHANNEL_ID: str = "-1002765866900"  # Платный канал для подписчиков
     PRIVATE_CHAT_LINK: str = "https://t.me/private_chat_link"
-    PAYMENT_LINK: str = "https://payment.example.com"
+    # PAYMENT_LINK более не используется (оплата через /pay)
+    PRIVACY_POLICY_URL: str = "http://project13655227.tilda.ws/privacy"  # Ссылка на политику конфиденциальности
     SUBSCRIPTION_PRICE: int = 999
     SUBSCRIPTION_DURATION_DAYS: int = 30
+    ROBOKASSA_ENCODED_INVOICE_ID: str = "pfV41IHNOEeWk9illbWUNQ"  # EncodedInvoiceId для Robokassa
     
     # Performance settings
     DATABASE_POOL_SIZE: int = 10
@@ -85,6 +91,5 @@ class Config:
     ALGORITHM = settings.ALGORITHM
     ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
     PRIVATE_CHAT_LINK = settings.PRIVATE_CHAT_LINK
-    PAYMENT_LINK = settings.PAYMENT_LINK
     SUBSCRIPTION_PRICE = settings.SUBSCRIPTION_PRICE
     SUBSCRIPTION_DURATION_DAYS = settings.SUBSCRIPTION_DURATION_DAYS

@@ -57,16 +57,34 @@ def check_dependencies():
 
 
 def run_bot():
-    """Запуск Telegram бота"""
-    try:
-        from app.bot.bot import create_bot
-        bot = create_bot()
-        logger.info("Запуск Telegram бота...")
-        print("🤖 Запуск Telegram бота...")
-        bot.run()
-    except Exception as e:
-        logger.error(f"Ошибка запуска бота: {e}")
-        print(f"❌ Ошибка запуска бота: {e}")
+    """Запуск Telegram бота с ретраями"""
+    import time
+    attempt = 0
+    while True:
+        try:
+            # Сбрасываем event loop перед каждой попыткой (Windows compatibility)
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_closed():
+                    asyncio.set_event_loop(asyncio.new_event_loop())
+            except RuntimeError:
+                asyncio.set_event_loop(asyncio.new_event_loop())
+
+            from app.bot.bot import create_bot, reset_bot_singleton
+            reset_bot_singleton()
+            bot = create_bot()
+            logger.info("Запуск Telegram бота...")
+            print("🤖 Запуск Telegram бота...")
+            bot.run()
+            # Если run() завершился (обычно по Ctrl+C), выходим из цикла
+            break
+        except Exception as e:
+            attempt += 1
+            wait_seconds = min(60, 5 * attempt)
+            logger.error(f"Ошибка запуска бота: {e}")
+            print(f"❌ Ошибка запуска бота: {e}")
+            print(f"⏳ Повторный запуск через {wait_seconds} сек...")
+            time.sleep(wait_seconds)
 
 
 def run_admin():
@@ -96,6 +114,45 @@ def run_admin():
         print(f"❌ Ошибка запуска админки: {e}")
 
 
+def run_subscription_checker():
+    """Запуск периодической проверки подписок"""
+    try:
+        import asyncio
+        from app.core.subscription_manager import subscription_manager
+        from app.core.database import get_db
+        
+        async def check_subscriptions_loop():
+            """Цикл проверки подписок"""
+            while True:
+                try:
+                    # Получаем сессию БД
+                    db = next(get_db())
+                    try:
+                        # Проверяем истекающие подписки
+                        await subscription_manager.check_expiring_subscriptions(db)
+                        
+                        # Удаляем пользователей с истекшими подписками
+                        await subscription_manager.remove_expired_subscriptions(db)
+                        
+                        logger.info("Subscription check completed successfully")
+                        
+                    finally:
+                        db.close()
+                        
+                except Exception as e:
+                    logger.error(f"Error in subscription check loop: {e}")
+                
+                # Ждем 1 час до следующей проверки
+                await asyncio.sleep(3600)  # 1 час
+        
+        # Запускаем цикл проверки
+        asyncio.run(check_subscriptions_loop())
+        
+    except Exception as e:
+        logger.error(f"Error in subscription checker: {e}")
+        print(f"❌ Ошибка в проверке подписок: {e}")
+
+
 def main():
     """Главная функция запуска"""
     logger.info("Запуск системы Telegram Bot + FastAPI CRM...")
@@ -108,12 +165,18 @@ def main():
     
     # Для Windows запускаем админку в отдельном потоке, бота в основном
     admin_thread = threading.Thread(target=run_admin, daemon=True)
+    subscription_thread = threading.Thread(target=run_subscription_checker, daemon=True)
     
     try:
         # Запускаем админку в фоне
         logger.info("Запуск FastAPI админки в отдельном потоке...")
         print("🌐 Запуск FastAPI админки в отдельном потоке...")
         admin_thread.start()
+        
+        # Запускаем проверку подписок в фоне
+        logger.info("Запуск проверки подписок в отдельном потоке...")
+        print("⏰ Запуск проверки подписок в отдельном потоке...")
+        subscription_thread.start()
         
         # Небольшая задержка для запуска админки
         import time

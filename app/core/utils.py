@@ -2,8 +2,6 @@
 Утилиты для оптимизации производительности
 """
 import time
-import hashlib
-import json
 from typing import Any, Optional, Dict, Callable
 from functools import wraps
 from collections import defaultdict
@@ -101,54 +99,6 @@ class RateLimiter:
         ]
 
 
-def cache_result(ttl: int = 300, key_prefix: str = ""):
-    """Декоратор для кэширования результатов функций"""
-    def decorator(func: Callable) -> Callable:
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            # Фильтруем аргументы, исключая несериализуемые объекты
-            def filter_args(args_tuple, kwargs_dict):
-                filtered_args = []
-                for arg in args_tuple:
-                    try:
-                        # Пытаемся сериализовать аргумент
-                        json.dumps(arg)
-                        filtered_args.append(arg)
-                    except (TypeError, ValueError):
-                        # Если не можем сериализовать, добавляем строковое представление типа
-                        filtered_args.append(f"<{type(arg).__name__}>")
-                
-                filtered_kwargs = {}
-                for key, value in kwargs_dict.items():
-                    try:
-                        json.dumps(value)
-                        filtered_kwargs[key] = value
-                    except (TypeError, ValueError):
-                        filtered_kwargs[key] = f"<{type(value).__name__}>"
-                
-                return filtered_args, filtered_kwargs
-            
-            filtered_args, filtered_kwargs = filter_args(args, kwargs)
-            
-            # Создание ключа кэша
-            cache_key = f"{key_prefix}:{func.__name__}:{hashlib.md5(json.dumps((filtered_args, filtered_kwargs), sort_keys=True).encode()).hexdigest()}"
-            
-            # Получение из кэша
-            cached_result = cache.get(cache_key)
-            if cached_result is not None:
-                logger.debug(f"Cache hit for {cache_key}")
-                return cached_result
-            
-            # Выполнение функции и сохранение в кэш
-            result = func(*args, **kwargs)
-            cache.set(cache_key, result)
-            logger.debug(f"Cache miss for {cache_key}, result cached")
-            
-            return result
-        return wrapper
-    return decorator
-
-
 def rate_limit(requests_per_minute: int = 60, requests_per_hour: int = 1000):
     """Декоратор для rate limiting"""
     def decorator(func: Callable) -> Callable:
@@ -211,6 +161,3 @@ cache = SimpleCache()
 rate_limiter = RateLimiter()
 
 
-def cleanup_cache():
-    """Периодическая очистка кэша"""
-    cache.cleanup_expired()

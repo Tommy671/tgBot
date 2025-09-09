@@ -16,6 +16,10 @@ class UserBase(BaseModel):
     role_in_company: Optional[str] = None
     contact_number: Optional[str] = None
     participation_purpose: Optional[str] = None
+    is_in_free_channel: Optional[bool] = False
+    is_in_paid_channel: Optional[bool] = False
+    free_channel_join_date: Optional[datetime] = None
+    paid_channel_join_date: Optional[datetime] = None
 
 
 class User(UserBase):

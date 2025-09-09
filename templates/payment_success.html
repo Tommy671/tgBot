@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Оплата успешна{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="alert alert-success">{{ message }}</div>
+  {% if deep_link %}
+  <a class="btn btn-primary" href="{{ deep_link }}">Вернуться в бота</a>
+  {% endif %}
+  <a class="btn btn-outline-secondary" href="/">На главную</a>
+  <p class="text-muted mt-3">Если кнопка не открывает Telegram, откройте бота вручную и нажмите “Приватный чат”.</p>
+  <p class="text-muted">Без проверки подписи Robokassa — для полной надёжности рекомендуем позже включить Result URL.</p>
+  </div>
+</div>
+{% endblock %}
+
+

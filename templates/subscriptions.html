@@ -17,22 +17,15 @@
 {% block content %}
 <div class="row">
     <!-- Количество пользователей с подпиской -->
-    <div class="col-lg-6 mb-4">
-        <div class="stats-card h-100">
-            <div class="d-flex align-items-center justify-content-between">
-                <div>
-                    <div class="display-4 fw-bold" id="users-with-subscription">0</div>
-                    <p class="text-muted mb-0">
-                        <i class="fas fa-users me-2"></i>
-                        Пользователей с подпиской
-                    </p>
-                </div>
-                <div class="text-end">
-                    <i class="fas fa-users fa-2x text-white-50"></i>
-                </div>
+    <div class="col-lg-6 col-md-12 mb-4">
+        <div class="card bg-primary text-white h-100">
+            <div class="card-body text-center">
+                <div class="display-4 fw-bold" id="users-with-subscription">0</div>
+                <div class="text-white-75">Пользователей с подпиской</div>
+                <small class="text-white-50">(в платном канале)</small>
             </div>
-        </div>
     </div>
+</div>
 
     <!-- Настройки подписки -->
     <div class="col-lg-6 mb-4">
@@ -42,7 +35,7 @@
                     <i class="fas fa-cog me-2"></i>
                     Настройки подписки
                 </h5>
-            </div>
+    </div>
             <div class="card-body">
                 <form id="subscription-settings-form">
                     <div class="mb-4">
@@ -54,12 +47,12 @@
                             <input type="number" class="form-control" id="subscription-price" 
                                    placeholder="Введите цену" min="0" step="1" required>
                             <span class="input-group-text">₽/месяц</span>
-                        </div>
+                    </div>
                         <div class="form-text">
                             <i class="fas fa-info-circle me-1"></i>
                             Текущая цена подписки, отображаемая пользователям в боте
-                        </div>
                     </div>
+                </div>
                     
                     <div class="mb-4">
                         <label for="private-chat-link" class="form-label">
@@ -71,79 +64,79 @@
                         <div class="form-text">
                             <i class="fas fa-info-circle me-1"></i>
                             Ссылка на приватный чат для подписчиков
-                        </div>
-                    </div>
+            </div>
+        </div>
                     
                     <div class="mb-4">
-                        <label for="payment-link" class="form-label">
-                            <i class="fas fa-credit-card me-2"></i>
-                            Ссылка на оплату
+                        <label for="robokassa-script" class="form-label">
+                            <i class="fas fa-code me-2"></i>
+                            Скрипт Robokassa
                         </label>
-                        <input type="url" class="form-control" id="payment-link" 
-                               placeholder="https://payment.example.com" required>
+                        <input type="text" class="form-control" id="robokassa-script" 
+                               placeholder="pfV41IHNOEeWk9illbWUNQ" required>
                         <div class="form-text">
                             <i class="fas fa-info-circle me-1"></i>
-                            Ссылка для оплаты подписки
-                        </div>
-                    </div>
+                            EncodedInvoiceId из настроек Robokassa
+                                    </div>
+                                </div>
                     
                     <button type="submit" class="btn btn-primary w-100">
                         <i class="fas fa-save me-2"></i>
                         Сохранить настройки
                     </button>
                 </form>
-            </div>
-        </div>
-    </div>
+                            </div>
+                        </div>
+                    </div>
 </div>
 
 <!-- Информационная панель -->
 <div class="row">
     <div class="col-12">
-        <div class="card">
+<div class="card">
             <div class="card-header">
                 <h5 class="mb-0">
                     <i class="fas fa-info-circle me-2"></i>
                     Информация о настройках
                 </h5>
-            </div>
-            <div class="card-body">
+    </div>
+    <div class="card-body">
                 <div class="row">
                     <div class="col-md-4 mb-3">
                         <div class="d-flex align-items-center p-3 bg-light rounded">
                             <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 50px; height: 50px;">
                                 <i class="fas fa-ruble-sign fa-lg text-white"></i>
-                            </div>
-                            <div>
+                                </div>
+                                <div>
                                 <h6 class="mb-1">Цена подписки</h6>
                                 <p class="mb-0 text-muted" id="current-price">Загрузка...</p>
+                                </div>
                             </div>
-                        </div>
-                    </div>
+                            </div>
                     <div class="col-md-4 mb-3">
                         <div class="d-flex align-items-center p-3 bg-light rounded">
                             <div class="bg-success rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 50px; height: 50px;">
                                 <i class="fas fa-link fa-lg text-white"></i>
-                            </div>
+        </div>
                             <div>
                                 <h6 class="mb-1">Приватный чат</h6>
                                 <p class="mb-0 text-muted" id="current-chat-link">Загрузка...</p>
-                            </div>
-                        </div>
                     </div>
+                </div>
+            </div>
                     <div class="col-md-4 mb-3">
                         <div class="d-flex align-items-center p-3 bg-light rounded">
                             <div class="bg-warning rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 50px; height: 50px;">
-                                <i class="fas fa-credit-card fa-lg text-white"></i>
+                                <i class="fas fa-code fa-lg text-white"></i>
                             </div>
                             <div>
-                                <h6 class="mb-1">Оплата</h6>
-                                <p class="mb-0 text-muted" id="current-payment-link">Загрузка...</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
+                                <h6 class="mb-1">Robokassa</h6>
+                                <p class="mb-0 text-muted" id="current-robokassa-script">Загрузка...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
                 <div class="alert alert-info mt-3">
                     <div class="d-flex align-items-center">
                         <i class="fas fa-lightbulb fa-2x me-3 text-info"></i>
@@ -153,9 +146,9 @@
                                 Изменения в настройках автоматически применяются в боте. 
                                 Пользователи увидят обновленную цену и ссылки при следующем взаимодействии с ботом.
                             </p>
-                        </div>
-                    </div>
+            </div>
                 </div>
+            </div>
             </div>
         </div>
     </div>
@@ -203,12 +196,14 @@ async function loadSubscriptionSettings() {
         // Заполняем форму
         document.getElementById('subscription-price').value = data.subscription_price || 999;
         document.getElementById('private-chat-link').value = data.private_chat_link || '';
-        document.getElementById('payment-link').value = data.payment_link || '';
+        
+        // Показываем только EncodedInvoiceId для простоты
+        document.getElementById('robokassa-script').value = data.robokassa_encoded_invoice_id || '';
         
         // Обновляем информационную панель
         document.getElementById('current-price').textContent = `${data.subscription_price || 999} ₽/месяц`;
         document.getElementById('current-chat-link').textContent = data.private_chat_link || 'Не указана';
-        document.getElementById('current-payment-link').textContent = data.payment_link || 'Не указана';
+        document.getElementById('current-robokassa-script').textContent = data.robokassa_encoded_invoice_id || 'Не указан';
         
     } catch (error) {
         console.error('Ошибка при загрузке настроек подписки:', error);
@@ -223,7 +218,7 @@ document.getElementById('subscription-settings-form').addEventListener('submit',
     const formData = {
         subscription_price: parseFloat(document.getElementById('subscription-price').value),
         private_chat_link: document.getElementById('private-chat-link').value,
-        payment_link: document.getElementById('payment-link').value
+        robokassa_encoded_invoice_id: document.getElementById('robokassa-script').value
     };
     
     // Валидация
@@ -232,8 +227,8 @@ document.getElementById('subscription-settings-form').addEventListener('submit',
         return;
     }
     
-    if (!formData.private_chat_link || !formData.payment_link) {
-        showAlert('Пожалуйста, заполните все поля', 'warning');
+    if (!formData.private_chat_link || !formData.robokassa_encoded_invoice_id) {
+        showAlert('Пожалуйста, заполните все поля и укажите корректный скрипт Robokassa', 'warning');
         return;
     }
     

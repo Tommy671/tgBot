@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Оплата подписки</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+        }
+        .payment-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 40px;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+        }
+        .payment-header {
+            margin-bottom: 30px;
+        }
+        .payment-header h1 {
+            color: #2c3e50;
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        .payment-header p {
+            color: #7f8c8d;
+            font-size: 1.1rem;
+        }
+        .payment-details {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+        .payment-details h3 {
+            color: #2c3e50;
+            font-size: 1.3rem;
+            margin-bottom: 20px;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+        .detail-label {
+            color: #6c757d;
+            font-weight: 500;
+        }
+        .detail-value {
+            color: #2c3e50;
+            font-weight: 600;
+        }
+        .price-highlight {
+            color: #28a745;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        .robokassa-form {
+            margin: 30px 0;
+            padding: 20px;
+            background: #fff;
+            border-radius: 15px;
+            border: 2px solid #e9ecef;
+        }
+        .btn-back-to-bot {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            border: none;
+            color: white;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+        .btn-back-to-bot:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(40, 167, 69, 0.3);
+            color: white;
+        }
+        .security-badge {
+            background: #e8f5e8;
+            color: #28a745;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-top: 20px;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <div class="payment-container">
+        <div class="payment-header">
+            <h1>💳 Оплата подписки</h1>
+            <p>Безопасная оплата через Robokassa</p>
+        </div>
+        
+        <div class="payment-details">
+            <h3>Детали подписки</h3>
+            <div class="detail-row">
+                <span class="detail-label">Пользователь:</span>
+                <span class="detail-value">@{{ user.username or user.telegram_id }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Сумма:</span>
+                <span class="detail-value price-highlight">{{ amount }} ₽</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Срок подписки:</span>
+                <span class="detail-value">{{ duration }} дней</span>
+            </div>
+        </div>
+
+        <div class="robokassa-form">
+            <h4 style="color: #2c3e50; margin-bottom: 20px;">Выберите способ оплаты</h4>
+            <script type="text/javascript" src="{{ robokassa_script_url }}"></script>
+        </div>
+
+        <div class="security-badge">
+            🔒 Защищенная оплата
+        </div>
+
+        <a href="{{ bot_deep_link }}" class="btn-back-to-bot">
+            🤖 Вернуться в бота
+        </a>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

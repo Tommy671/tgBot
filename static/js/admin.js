@@ -1,3 +1,6 @@
+// Telegram CRM Admin Panel JavaScript
+// Version: 6.4 - Fixed Dashboard Users Table Update
+
 // Глобальные переменные
 let authToken = localStorage.getItem('authToken');
 window.allUsers = []; // Храним всех пользователей для фильтрации
@@ -74,7 +77,10 @@ async function getDashboardStats() {
         console.log('Dashboard stats received:', stats);
         console.log('Stats type:', typeof stats);
         console.log('Stats keys:', Object.keys(stats));
+        
+        // Обновляем UI дашборда через функцию updateDashboardUI
         updateDashboardUI(stats);
+        
     } catch (error) {
         console.error('Failed to get dashboard stats:', error);
         // Показываем сообщение об ошибке на странице
@@ -93,19 +99,104 @@ async function getDashboardStats() {
     }
 }
 
+// Функция для обновления дашборда (вызывается кнопкой "Обновить статистику")
+async function loadDashboardData() {
+    try {
+        // Обновляем статистику дашборда
+        await getDashboardStats();
+        
+        // Если мы на дашборде, обновляем таблицу пользователей
+        if (window.location.pathname === '/' && typeof loadUsers === 'function') {
+            await loadUsers();
+        }
+        // Если мы на странице пользователей, обновляем полный список
+        else if (window.location.pathname === '/users' && typeof getUsers === 'function') {
+            await getUsers();
+        }
+        
+        showAlert('Список пользователей обновлен', 'success');
+    } catch (error) {
+        console.error('Failed to refresh dashboard data:', error);
+        showAlert('Ошибка обновления данных', 'error');
+    }
+}
+
 // Обновление UI дашборда
 function updateDashboardUI(stats) {
-    const totalUsersEl = document.getElementById('total-users');
-    const activeSubscriptionsEl = document.getElementById('active-subscriptions');
+    console.log('🔄 updateDashboardUI called with stats:', stats);
+    
+    // Элементы для статистики бесплатного канала
+    const totalFreeChannelEl = document.getElementById('total-free-channel-count');
+    const activeUsersEl = document.getElementById('active-users-count');
+    const newUsersWeekEl = document.getElementById('new-users-week');
     const newUsersTodayEl = document.getElementById('new-users-today');
-    const expiringSubscriptionsEl = document.getElementById('expiring-subscriptions');
     
-    if (totalUsersEl) totalUsersEl.textContent = stats.total_users || 0;
-    if (activeSubscriptionsEl) activeSubscriptionsEl.textContent = stats.active_subscriptions || 0;
-    if (newUsersTodayEl) newUsersTodayEl.textContent = stats.new_users_today || 0; // API возвращает new_users_today
-    if (expiringSubscriptionsEl) expiringSubscriptionsEl.textContent = stats.expiring_subscriptions || 0;
+    // Элементы для статистики платного чата
+    const usersWithSubscriptionEl = document.getElementById('users-with-subscription-count');
+    const newPaidWeekEl = document.getElementById('new-paid-week');
+    const newPaidTodayEl = document.getElementById('new-paid-today');
     
-    console.log('Dashboard stats updated:', stats);
+    console.log('🔍 Dashboard elements found:');
+    console.log('   - total-free-channel-count:', totalFreeChannelEl ? '✅' : '❌');
+    console.log('   - active-users-count:', activeUsersEl ? '✅' : '❌');
+    console.log('   - new-users-week:', newUsersWeekEl ? '✅' : '❌');
+    console.log('   - new-users-today:', newUsersTodayEl ? '✅' : '❌');
+    console.log('   - users-with-subscription-count:', usersWithSubscriptionEl ? '✅' : '❌');
+    console.log('   - new-paid-week:', newPaidWeekEl ? '✅' : '❌');
+    console.log('   - new-paid-today:', newPaidTodayEl ? '✅' : '❌');
+    
+    // Обновляем статистику бесплатного канала
+    if (totalFreeChannelEl) {
+        totalFreeChannelEl.textContent = stats.total_free_channel_users || 0;
+        console.log('✅ Updated total-free-channel-count to:', stats.total_free_channel_users || 0);
+    } else {
+        console.warn('⚠️ Element total-free-channel-count not found!');
+    }
+    
+    if (activeUsersEl) {
+        activeUsersEl.textContent = stats.active_users || 0;
+        console.log('✅ Updated active-users-count to:', stats.active_users || 0);
+    } else {
+        console.warn('⚠️ Element active-users-count not found!');
+    }
+    
+    if (newUsersWeekEl) {
+        newUsersWeekEl.textContent = stats.new_users_week || 0;
+        console.log('✅ Updated new-users-week to:', stats.new_users_week || 0);
+    } else {
+        console.warn('⚠️ Element new-users-week not found!');
+    }
+    
+    if (newUsersTodayEl) {
+        newUsersTodayEl.textContent = stats.new_users_today || 0;
+        console.log('✅ Updated new-users-today to:', stats.new_users_today || 0);
+    } else {
+        console.warn('⚠️ Element new-users-today not found!');
+    }
+    
+    // Обновляем статистику платного чата
+    if (usersWithSubscriptionEl) {
+        usersWithSubscriptionEl.textContent = stats.users_with_subscription || 0;
+        console.log('✅ Updated users-with-subscription-count to:', stats.users_with_subscription || 0);
+    } else {
+        console.warn('⚠️ Element users-with-subscription-count not found!');
+    }
+    
+    if (newPaidWeekEl) {
+        newPaidWeekEl.textContent = stats.new_paid_week || 0;
+        console.log('✅ Updated new-paid-week to:', stats.new_paid_week || 0);
+    } else {
+        console.warn('⚠️ Element new-paid-week not found!');
+    }
+    
+    if (newPaidTodayEl) {
+        newPaidTodayEl.textContent = stats.new_paid_today || 0;
+        console.log('✅ Updated new-paid-today to:', stats.new_paid_today || 0);
+    } else {
+        console.warn('⚠️ Element new-paid-today not found!');
+    }
+    
+    console.log('🎉 Dashboard UI update completed!');
     
     // Загружаем последних пользователей для отображения на дашборде
     loadRecentUsers();
@@ -113,12 +204,12 @@ function updateDashboardUI(stats) {
 
 // Обновление статистики в разделе пользователей
 function updateUsersStats(usersData) {
-    const totalUsersCountEl = document.getElementById('total-users-count');
+    const totalFreeChannelEl = document.getElementById('total-free-channel-count');
     const activeUsersCountEl = document.getElementById('active-users-count');
-    const subscribedUsersCountEl = document.getElementById('subscribed-users-count');
+    const usersWithSubscriptionEl = document.getElementById('users-with-subscription-count');
     const newUsersCountEl = document.getElementById('new-users-count');
     
-    if (totalUsersCountEl) totalUsersCountEl.textContent = usersData.total || 0;
+    if (totalFreeChannelEl) totalFreeChannelEl.textContent = usersData.total_free_channel || 0;
     
     // Подсчитываем активных пользователей по полю is_active
     const users = usersData.users || [];
@@ -130,7 +221,7 @@ function updateUsersStats(usersData) {
         user.subscription_status && user.subscription_status !== 'Нет подписки'
     ).length;
     
-    if (subscribedUsersCountEl) subscribedUsersCountEl.textContent = subscribedCount;
+    if (usersWithSubscriptionEl) usersWithSubscriptionEl.textContent = subscribedCount;
     
     // Подсчитываем новых пользователей за сегодня
     const today = new Date();
@@ -145,7 +236,8 @@ function updateUsersStats(usersData) {
     if (newUsersCountEl) newUsersCountEl.textContent = newUsersCount;
     
     console.log('Users stats updated:', {
-        total: usersData.total,
+        total_free_channel: usersData.total_free_channel,
+        active: activeCount,
         subscribed: subscribedCount,
         newToday: newUsersCount
     });

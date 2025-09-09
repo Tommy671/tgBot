@@ -32,6 +32,18 @@ class User(Base):
     
     # Связь с подпиской
     subscription = relationship("Subscription", back_populates="user", uselist=False)
+    
+    # Связь с платежами
+    payments = relationship("Payment", back_populates="user")
+    
+    # Участие в каналах
+    is_in_free_channel = Column(Boolean, default=False)  # Участник бесплатного канала
+    is_in_paid_channel = Column(Boolean, default=False)  # Участник платного канала
+    free_channel_join_date = Column(DateTime, nullable=True)  # Дата вступления в бесплатный канал
+    paid_channel_join_date = Column(DateTime, nullable=True)  # Дата вступления в платный канал
+    
+    # Связь с участием в каналах
+    channel_memberships = relationship("ChannelMembership", back_populates="user")
 
     def has_active_subscription(self):
         """Проверка наличия активной подписки"""
@@ -66,7 +78,15 @@ class Subscription(Base):
 
     def check_active(self):
         """Проверка активности подписки"""
-        return self.is_active and datetime.now(timezone.utc) < self.end_date
+        if not self.is_active or not self.end_date:
+            return False
+        
+        # Убеждаемся что end_date имеет timezone
+        end_date = self.end_date
+        if end_date.tzinfo is None:
+            end_date = end_date.replace(tzinfo=timezone.utc)
+        
+        return datetime.now(timezone.utc) < end_date
 
     def days_left(self):
         """Количество дней до истечения подписки"""
@@ -103,3 +123,42 @@ class BotSettings(Base):
     value = Column(String)  # Значение настройки
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_by = Column(String, nullable=True)  # Кто обновил настройку
+
+
+class ChannelMembership(Base):
+    """Модель участия в каналах"""
+    __tablename__ = "channel_memberships"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    channel_type = Column(String, index=True)  # 'free' или 'paid'
+    joined_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    left_at = Column(DateTime, nullable=True)  # Дата выхода (если вышел)
+    is_current = Column(Boolean, default=True)  # Текущий участник
+    
+    # Связь с пользователем
+    user = relationship("User", back_populates="channel_memberships")
+
+    def __repr__(self):
+        return f"<ChannelMembership(user_id={self.user_id}, channel={self.channel_type}, joined={self.joined_at})>"
+
+
+class Payment(Base):
+    """Модель платежа"""
+    __tablename__ = "payments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    payment_id = Column(String, unique=True, index=True)  # ID платежа в Робокассе
+    amount = Column(Integer)  # Сумма в копейках
+    currency = Column(String, default="RUB")
+    status = Column(String, index=True)  # 'pending', 'success', 'failed'
+    payment_method = Column(String, nullable=True)  # Способ оплаты
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    completed_at = Column(DateTime, nullable=True)  # Время завершения платежа
+    
+    # Связь с пользователем
+    user = relationship("User", back_populates="payments")
+
+    def __repr__(self):
+        return f"<Payment(user_id={self.user_id}, amount={self.amount}, status={self.status})>"

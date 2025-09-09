@@ -1,0 +1,19 @@
+ОТЧЕТ О ПОИСКЕ ID КАНАЛОВ
+==================================================
+Дата: 2025-09-05 00:03:30
+Бот: TestBot (@ValeraMikaTestBot)
+
+ИСХОДНЫЕ ДАННЫЕ:
+FREE_CHANNEL_ID: @testpaid020925
+PAID_CHANNEL_ID: https://t.me/+PDZ4TebmVys2M2Uy
+
+FREE КАНАЛ:
+  Название: testfree
+  ID: -1002776416062
+  Username: @testpaid020925
+  Участников: 3
+  Тип: channel
+  Бот админ: Да
+  Может удалять: Да
+
+КОНФИГУРАЦИЯ ДЛЯ .env:

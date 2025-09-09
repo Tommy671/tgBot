@@ -1,186 +1,92 @@
 """
 Миграции базы данных
 """
-from sqlalchemy import text
-from app.core.database import engine, SessionLocal
+from sqlalchemy import create_engine, text
+from app.core.database import Base, SessionLocal
+from app.core.config import settings
 import logging
 
 logger = logging.getLogger(__name__)
 
 
-def run_migrations():
-    """Запуск всех миграций"""
-    try:
-        with engine.connect() as conn:
-            # Создаем таблицу для отслеживания миграций
+def upgrade_database():
+    """Обновление базы данных до последней версии"""
+    engine = create_engine(settings.DATABASE_URL)
+    
+    with engine.connect() as conn:
+        # Проверяем существование таблицы channel_memberships
+        result = conn.execute(text("""
+            SELECT name FROM sqlite_master 
+            WHERE type='table' AND name='channel_memberships'
+        """))
+        
+        if not result.fetchone():
+            logger.info("Creating channel_memberships table...")
             conn.execute(text("""
-                CREATE TABLE IF NOT EXISTS migrations (
+                CREATE TABLE channel_memberships (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    version TEXT NOT NULL,
-                    applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    user_id INTEGER NOT NULL,
+                    channel_type VARCHAR NOT NULL,
+                    joined_at DATETIME NOT NULL,
+                    left_at DATETIME,
+                    is_current BOOLEAN NOT NULL DEFAULT 1,
+                    FOREIGN KEY (user_id) REFERENCES users (id)
                 )
             """))
-            conn.commit()
+            conn.execute(text("CREATE INDEX ix_channel_memberships_user_id ON channel_memberships (user_id)"))
+            conn.execute(text("CREATE INDEX ix_channel_memberships_channel_type ON channel_memberships (channel_type)"))
+            logger.info("channel_memberships table created successfully")
         
-        # Получаем список примененных миграций
-        with SessionLocal() as db:
-            applied_migrations = db.execute(text("SELECT version FROM migrations")).fetchall()
-            applied_versions = [row[0] for row in applied_migrations]
-        
-        # Список всех миграций
-        migrations = [
-            ("001_initial_schema", initial_schema_migration),
-            ("002_add_indexes", add_indexes_migration),
-            ("003_add_constraints", add_constraints_migration),
-        ]
-        
-        # Применяем миграции
-        for version, migration_func in migrations:
-            if version not in applied_versions:
-                logger.info(f"Applying migration: {version}")
-                try:
-                    migration_func()
-                    # Отмечаем миграцию как примененную
-                    with SessionLocal() as db:
-                        db.execute(
-                            text("INSERT INTO migrations (version) VALUES (:version)"),
-                            {"version": version}
-                        )
-                        db.commit()
-                    logger.info(f"Migration {version} applied successfully")
-                except Exception as e:
-                    logger.error(f"Failed to apply migration {version}: {e}")
-                    raise
-            else:
-                logger.info(f"Migration {version} already applied")
-        
-        logger.info("All migrations completed successfully")
-        
-    except Exception as e:
-        logger.error(f"Migration error: {e}")
-        raise
-
-
-def initial_schema_migration():
-    """Первоначальная схема базы данных"""
-    with engine.connect() as conn:
-        # Создаем таблицы если они не существуют
-        conn.execute(text("""
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                telegram_id INTEGER UNIQUE NOT NULL,
-                username TEXT,
-                full_name TEXT,
-                activity_field TEXT,
-                company TEXT,
-                role_in_company TEXT,
-                contact_number TEXT,
-                participation_purpose TEXT,
-                registration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                is_active BOOLEAN DEFAULT 1,
-                consent_given BOOLEAN DEFAULT 0,
-                consent_date TIMESTAMP
-            )
+        # Проверяем существование таблицы payments
+        result = conn.execute(text("""
+            SELECT name FROM sqlite_master 
+            WHERE type='table' AND name='payments'
         """))
         
-        conn.execute(text("""
-            CREATE TABLE IF NOT EXISTS subscriptions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                start_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                end_date TIMESTAMP NOT NULL,
-                is_active BOOLEAN DEFAULT 1,
-                auto_renewal BOOLEAN DEFAULT 0,
-                payment_amount INTEGER NOT NULL,
-                FOREIGN KEY (user_id) REFERENCES users (id)
-            )
-        """))
+        if not result.fetchone():
+            logger.info("Creating payments table...")
+            conn.execute(text("""
+                CREATE TABLE payments (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    payment_id VARCHAR NOT NULL UNIQUE,
+                    amount INTEGER NOT NULL,
+                    currency VARCHAR NOT NULL DEFAULT 'RUB',
+                    status VARCHAR NOT NULL,
+                    payment_method VARCHAR,
+                    created_at DATETIME NOT NULL,
+                    completed_at DATETIME,
+                    FOREIGN KEY (user_id) REFERENCES users (id)
+                )
+            """))
+            conn.execute(text("CREATE INDEX ix_payments_user_id ON payments (user_id)"))
+            conn.execute(text("CREATE INDEX ix_payments_payment_id ON payments (payment_id)"))
+            conn.execute(text("CREATE INDEX ix_payments_status ON payments (status)"))
+            logger.info("payments table created successfully")
         
-        conn.execute(text("""
-            CREATE TABLE IF NOT EXISTS admin_users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT UNIQUE NOT NULL,
-                hashed_password TEXT NOT NULL,
-                is_active BOOLEAN DEFAULT 1
-            )
-        """))
+        # Проверяем существование новых колонок в таблице users
+        result = conn.execute(text("PRAGMA table_info(users)"))
+        columns = [row[1] for row in result.fetchall()]
+        
+        if 'is_in_free_channel' not in columns:
+            logger.info("Adding is_in_free_channel column to users table...")
+            conn.execute(text("ALTER TABLE users ADD COLUMN is_in_free_channel BOOLEAN DEFAULT 0"))
+            logger.info("is_in_free_channel column added successfully")
+        
+        if 'is_in_paid_channel' not in columns:
+            logger.info("Adding is_in_paid_channel column to users table...")
+            conn.execute(text("ALTER TABLE users ADD COLUMN is_in_paid_channel BOOLEAN DEFAULT 0"))
+            logger.info("is_in_paid_channel column added successfully")
+        
+        if 'free_channel_join_date' not in columns:
+            logger.info("Adding free_channel_join_date column to users table...")
+            conn.execute(text("ALTER TABLE users ADD COLUMN free_channel_join_date DATETIME"))
+            logger.info("free_channel_join_date column added successfully")
+        
+        if 'paid_channel_join_date' not in columns:
+            logger.info("Adding paid_channel_join_date column to users table...")
+            conn.execute(text("ALTER TABLE users ADD COLUMN paid_channel_join_date DATETIME"))
+            logger.info("paid_channel_join_date column added successfully")
         
         conn.commit()
-
-
-def add_indexes_migration():
-    """Добавление индексов для улучшения производительности"""
-    with engine.connect() as conn:
-        # Индексы для таблицы users
-        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_users_telegram_id ON users(telegram_id)"))
-        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_users_registration_date ON users(registration_date)"))
-        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_users_is_active ON users(is_active)"))
-        
-        # Индексы для таблицы subscriptions
-        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON subscriptions(user_id)"))
-        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_subscriptions_end_date ON subscriptions(end_date)"))
-        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_subscriptions_is_active ON subscriptions(is_active)"))
-        
-        # Индексы для таблицы admin_users
-        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_admin_users_username ON admin_users(username)"))
-        
-        conn.commit()
-
-
-def add_constraints_migration():
-    """Добавление ограничений для целостности данных"""
-    with engine.connect() as conn:
-        # Ограничения для таблицы users
-        conn.execute(text("""
-            ALTER TABLE users ADD CONSTRAINT chk_users_telegram_id 
-            CHECK (telegram_id > 0)
-        """))
-        
-        # Ограничения для таблицы subscriptions
-        conn.execute(text("""
-            ALTER TABLE subscriptions ADD CONSTRAINT chk_subscriptions_amount 
-            CHECK (payment_amount >= 0)
-        """))
-        
-        conn.execute(text("""
-            ALTER TABLE subscriptions ADD CONSTRAINT chk_subscriptions_dates 
-            CHECK (end_date > start_date)
-        """))
-        
-        conn.commit()
-
-
-def rollback_migration(version: str):
-    """Откат конкретной миграции"""
-    try:
-        with SessionLocal() as db:
-            # Удаляем запись о миграции
-            db.execute(
-                text("DELETE FROM migrations WHERE version = :version"),
-                {"version": version}
-            )
-            db.commit()
-        
-        logger.info(f"Migration {version} rolled back successfully")
-        
-    except Exception as e:
-        logger.error(f"Failed to rollback migration {version}: {e}")
-        raise
-
-
-def get_migration_status():
-    """Получение статуса миграций"""
-    try:
-        with SessionLocal() as db:
-            migrations = db.execute(text("SELECT * FROM migrations ORDER BY applied_at")).fetchall()
-            return [
-                {
-                    "version": row[1],
-                    "applied_at": row[2]
-                }
-                for row in migrations
-            ]
-    except Exception as e:
-        logger.error(f"Failed to get migration status: {e}")
-        return []
+        logger.info("Database upgrade completed successfully")

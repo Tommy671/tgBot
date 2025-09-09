@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Оплата подписки{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="card">
+    <div class="card-body">
+      <h5 class="card-title">Оплата подписки</h5>
+      <p class="card-text">Пользователь: @{{ user.username or user.telegram_id }}</p>
+      <p class="card-text">Сумма: {{ price }} ₽</p>
+      <p class="card-text">Срок подписки: {{ duration }} дней</p>
+
+      <hr>
+
+      <div id="robokassa-form">
+        <script type="text/javascript" src="https://auth.robokassa.ru/Merchant/PaymentForm/FormSS.js?EncodedInvoiceId={{ encoded_invoice_id }}"></script>
+      </div>
+
+      <div class="mt-3">
+        {% if deep_link %}
+        <a class="btn btn-primary" href="{{ deep_link }}">Вернуться в бота</a>
+        {% endif %}
+        <a class="btn btn-outline-secondary" href="/">На главную</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+
