@@ -117,12 +117,12 @@ def get_current_admin(
 
 def create_default_admin(db: Session):
     """Создание администратора по умолчанию"""
-    existing_admin = db.query(AdminUser).filter(AdminUser.username == "admin").first()
+    existing_admin = db.query(AdminUser).filter(AdminUser.username == "admin1").first()
     if existing_admin:
         return False
     
     admin = AdminUser(
-        username="admin",
+        username="admin1",
         hashed_password=AdminUser.get_password_hash("admin123")
     )
     
