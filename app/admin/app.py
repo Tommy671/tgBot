@@ -49,6 +49,43 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
+# HMAC helpers for Robokassa success/fail binding
+import hmac
+import hashlib
+import base64
+import time
+
+def _sign_payment_token(message: str) -> str:
+    secret = settings.SECRET_KEY.encode("utf-8")
+    digest = hmac.new(secret, message.encode("utf-8"), hashlib.sha256).digest()
+    return base64.urlsafe_b64encode(digest).decode("utf-8").rstrip("=")
+
+def _make_payment_cookie_value(payment_id: str) -> str:
+    issued_at = str(int(time.time()))
+    payload = f"{payment_id}.{issued_at}"
+    sig = _sign_payment_token(payload)
+    return f"{payload}.{sig}"
+
+def _parse_and_verify_payment_cookie(cookie_value: str, max_age_seconds: int = 3600) -> Optional[str]:
+    try:
+        parts = cookie_value.split(".")
+        if len(parts) != 3:
+            return None
+        payment_id, issued_at_str, sig = parts
+        # verify signature
+        payload = f"{payment_id}.{issued_at_str}"
+        expected_sig = _sign_payment_token(payload)
+        if not hmac.compare_digest(sig, expected_sig):
+            return None
+        # verify age
+        issued_at = int(issued_at_str)
+        now = int(time.time())
+        if now - issued_at > max_age_seconds or issued_at > now + 60:
+            return None
+        return payment_id
+    except Exception:
+        return None
+
 # Создаем таблицы при запуске
 @app.on_event("startup")
 async def startup_event():
@@ -1095,18 +1132,28 @@ async def payment_page(request: Request, user_id: int, db: Session = Depends(get
         # EncodedInvoiceId (статический, от заказчика) + возможность задать в настройках
         encoded_invoice_id = get_setting_value(db, "robokassa_encoded_invoice_id", "pfV41IHNOEeWk9illbWUNQ")
 
-        return templates.TemplateResponse(
-            "payment_standalone.html",
-            {
-                "request": request,
-                "user": user,
-                "amount": price,
-                "duration": settings.SUBSCRIPTION_DURATION_DAYS,
-                "payment": payment,
-                "robokassa_script_url": f"https://auth.robokassa.ru/Merchant/PaymentForm/FormSS.js?EncodedInvoiceId={encoded_invoice_id}",
-                "bot_deep_link": deep_link,
-            },
+        context = {
+            "request": request,
+            "user": user,
+            "amount": price,
+            "duration": settings.SUBSCRIPTION_DURATION_DAYS,
+            "payment": payment,
+            "robokassa_script_url": f"https://auth.robokassa.ru/Merchant/PaymentForm/FormSS.js?EncodedInvoiceId={encoded_invoice_id}",
+            "bot_deep_link": deep_link,
+        }
+        response = templates.TemplateResponse("payment_standalone.html", context)
+        # Set secure cookie binding to this payment (valid 60 minutes)
+        cookie_value = _make_payment_cookie_value(payment.payment_id)
+        response.set_cookie(
+            key="rk_pay",
+            value=cookie_value,
+            httponly=True,
+            secure=False,
+            samesite="lax",
+            max_age=3600,
+            path="/"
         )
+        return response
     except HTTPException:
         raise
     except Exception as e:
@@ -1118,33 +1165,50 @@ async def payment_page(request: Request, user_id: int, db: Session = Depends(get
 async def robokassa_success(request: Request, db: Session = Depends(get_db)):
     """Обработка успешной оплаты (редирект со стороны Robokassa).
 
-    Внимание: без подписи. Используем эвристику:
-    - Берём самый свежий pending-платёж за последние 6 часов
-    - Помечаем как success
-    - Активируем/продлеваем подписку на 30 дней
-    - Добавляем пользователя в платный канал
+    Без подписи Robokassa. Привязка к платежу через HttpOnly cookie (HMAC).
     """
     try:
         now = datetime.now(timezone.utc)
-        six_hours_ago = now - timedelta(hours=6)
+        # Read and validate cookie
+        cookie_value = request.cookies.get("rk_pay")
+        payment_id = _parse_and_verify_payment_cookie(cookie_value) if cookie_value else None
+        if not payment_id:
+            response = templates.TemplateResponse(
+                "payment_success_standalone.html",
+                {
+                    "request": request,
+                    "message": "Сессия оплаты не найдена или устарела. Обратитесь в поддержку.",
+                    "bot_deep_link": f"https://t.me/{os.getenv('BOT_USERNAME', '')}" if os.getenv('BOT_USERNAME') else None
+                },
+            )
+            response.delete_cookie("rk_pay", path="/")
+            return response
 
+        # Find specific pending payment within 60 minutes
+        sixty_minutes_ago = now - timedelta(minutes=60)
         payment = (
             db.query(Payment)
-            .filter(Payment.status == "pending", Payment.created_at >= six_hours_ago)
+            .filter(
+                Payment.payment_id == payment_id,
+                Payment.status == "pending",
+                Payment.created_at >= sixty_minutes_ago,
+            )
             .order_by(Payment.created_at.desc())
             .first()
         )
         if not payment:
-            return templates.TemplateResponse(
+            response = templates.TemplateResponse(
                 "payment_success_standalone.html",
                 {
-                    "request": request, 
-                    "message": "Не найден ожидающий платёж. Обратитесь в поддержку.",
+                    "request": request,
+                    "message": "Подходящий платёж не найден или уже обработан.",
                     "bot_deep_link": f"https://t.me/{os.getenv('BOT_USERNAME', '')}" if os.getenv('BOT_USERNAME') else None
                 },
             )
+            response.delete_cookie("rk_pay", path="/")
+            return response
 
-        # Помечаем успех
+        # Mark success
         payment.status = "success"
         payment.completed_at = now
         db.commit()
@@ -1152,7 +1216,7 @@ async def robokassa_success(request: Request, db: Session = Depends(get_db)):
 
         user = db.query(User).filter(User.id == payment.user_id).first()
         if user:
-            # Продлеваем/создаём подписку на 30 дней
+            # Extend/create subscription by duration
             subscription = db.query(Subscription).filter(Subscription.user_id == user.id).first()
             if subscription and subscription.end_date and subscription.end_date > now:
                 subscription.end_date += timedelta(days=settings.SUBSCRIPTION_DURATION_DAYS)
@@ -1174,18 +1238,18 @@ async def robokassa_success(request: Request, db: Session = Depends(get_db)):
                     subscription.is_active = True
             db.commit()
 
-            # Добавляем пользователя в платный канал
+            # Add user to paid channel
             try:
                 from app.core.subscription_manager import subscription_manager
                 await subscription_manager.add_user_to_paid_channel(user, db)
             except Exception as e:
                 logger.warning(f"Failed to add user {user.id} to paid channel after success: {e}")
 
-        # Deep-link обратно в бота
+        # Deep-link back to bot
         bot_username = os.getenv("BOT_USERNAME", "")
         deep_link = f"https://t.me/{bot_username}" if bot_username else None
 
-        return templates.TemplateResponse(
+        response = templates.TemplateResponse(
             "payment_success_standalone.html",
             {
                 "request": request,
@@ -1193,6 +1257,8 @@ async def robokassa_success(request: Request, db: Session = Depends(get_db)):
                 "bot_deep_link": deep_link,
             },
         )
+        response.delete_cookie("rk_pay", path="/")
+        return response
     except Exception as e:
         logger.error(f"Robokassa success handler error: {e}")
         raise HTTPException(status_code=500, detail="Ошибка обработки успешной оплаты")
@@ -1203,23 +1269,30 @@ async def robokassa_fail(request: Request, db: Session = Depends(get_db)):
     """Обработка неуспешной оплаты (редирект со стороны Robokassa)."""
     try:
         now = datetime.now(timezone.utc)
-        six_hours_ago = now - timedelta(hours=6)
+        cookie_value = request.cookies.get("rk_pay")
+        payment_id = _parse_and_verify_payment_cookie(cookie_value) if cookie_value else None
 
-        payment = (
-            db.query(Payment)
-            .filter(Payment.status == "pending", Payment.created_at >= six_hours_ago)
-            .order_by(Payment.created_at.desc())
-            .first()
-        )
-        if payment:
-            payment.status = "failed"
-            payment.completed_at = now
-            db.commit()
+        if payment_id:
+            sixty_minutes_ago = now - timedelta(minutes=60)
+            payment = (
+                db.query(Payment)
+                .filter(
+                    Payment.payment_id == payment_id,
+                    Payment.status == "pending",
+                    Payment.created_at >= sixty_minutes_ago,
+                )
+                .order_by(Payment.created_at.desc())
+                .first()
+            )
+            if payment:
+                payment.status = "failed"
+                payment.completed_at = now
+                db.commit()
 
         bot_username = os.getenv("BOT_USERNAME", "")
         deep_link = f"https://t.me/{bot_username}" if bot_username else None
 
-        return templates.TemplateResponse(
+        response = templates.TemplateResponse(
             "payment_fail_standalone.html",
             {
                 "request": request,
@@ -1227,6 +1300,8 @@ async def robokassa_fail(request: Request, db: Session = Depends(get_db)):
                 "bot_deep_link": deep_link,
             },
         )
+        response.delete_cookie("rk_pay", path="/")
+        return response
     except Exception as e:
         logger.error(f"Robokassa fail handler error: {e}")
         raise HTTPException(status_code=500, detail="Ошибка обработки неуспешной оплаты")
