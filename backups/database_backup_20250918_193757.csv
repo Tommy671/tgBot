@@ -1,0 +1,26 @@
+# Резервная копия базы данных от 2025-09-18 19:37:58
+# Всего таблиц: 3
+
+# === ТАБЛИЦА: users ===
+# Записей: 2
+id,telegram_id,username,full_name,activity_field,company,role_in_company,contact_number,participation_purpose,registration_date,last_activity,is_active,consent_given,consent_date,is_in_free_channel,is_in_paid_channel,free_channel_join_date,paid_channel_join_date,offer_consent_given,offer_consent_date
+1,697808910,valerasazonov,а а,а,а,а,89999999999,а,2025-09-18 10:40:20.814498,2025-09-18 12:02:10.339694,1,1,2025-09-18 11:54:33.901536,0,0,,,1,2025-09-18 11:54:41.313978
+2,7288367989,VusionStudio,а а,а,а,а,88888888888,а,2025-09-18 12:02:45.823778,2025-09-18 12:02:49.247818,1,1,2025-09-18 12:02:45.815155,0,0,,,1,2025-09-18 12:02:49.247818
+
+
+# === ТАБЛИЦА: admin_users ===
+# Записей: 2
+id,username,hashed_password,is_active
+3,admin2,$2b$12$ZJ7lV4qKpBK.Jh2f0T3AB.5tjpfg7jkzzphlf5bmunRx/RfLox9HC,1
+4,admin1,$2b$12$UjIMcbmWwxs0uQabY35nau9lvsYlsG652OvVDIuClBrz8Ygf6.1m6,1
+
+
+# === ТАБЛИЦА: bot_settings ===
+# Записей: 4
+id,key,value,updated_at,updated_by
+1,subscription_price,1000,2025-09-09 16:47:24.087899,admin
+2,private_chat_link,https://t.me/+PDZ4TebmVys2M2Uy,2025-09-09 16:47:24.100248,admin
+3,payment_link,https://payment.example.com,2025-09-09 15:59:36.397900,admin
+4,robokassa_encoded_invoice_id,pfV41IHNOEeWk9illbWUNQ,2025-09-09 16:47:24.114059,admin
+
+
