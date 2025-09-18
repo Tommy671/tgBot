@@ -305,6 +305,8 @@ async def subscriptions_page(request: Request, db: Session = Depends(get_db)):
         return RedirectResponse(url="/login", status_code=302)
 
 
+
+
 # API endpoints
 # Функция для получения количества участников канала
 @lru_cache(maxsize=64)

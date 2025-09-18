@@ -29,6 +29,8 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     consent_given = Column(Boolean, default=False)
     consent_date = Column(DateTime, nullable=True)
+    offer_consent_given = Column(Boolean, default=False)
+    offer_consent_date = Column(DateTime, nullable=True)
     
     # Связь с подпиской
     subscription = relationship("Subscription", back_populates="user", uselist=False)
